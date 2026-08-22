@@ -23,6 +23,9 @@ class Settings(BaseSettings):
     retrieval_distance_threshold: float = Field(default=0.85, ge=0, le=2)
     retrieval_top_k: int = Field(default=5, ge=1, le=5)
     telemetry_retention_days: int = Field(default=90, ge=1, le=365)
+    insight_rules_path: Path = Path("examples/synthetic-portfolio/insight-topics.yaml")
+    insight_min_question_count: int = Field(default=2, ge=2, le=100)
+    owner_report_token: SecretStr = SecretStr("local-owner-report-token")
     google_cloud_project: str | None = None
     google_cloud_location: str = "global"
     firestore_database: str = "(default)"
@@ -40,6 +43,13 @@ class Settings(BaseSettings):
         ):
             raise ValueError(
                 "production session hash secret must be at least 32 characters"
+            )
+        report_token = self.owner_report_token.get_secret_value()
+        if self.environment == "production" and (
+            report_token == "local-owner-report-token" or len(report_token) < 32
+        ):
+            raise ValueError(
+                "production owner report token must be at least 32 characters"
             )
         if self.backend == "google" and (
             not self.google_cloud_project or not self.generation_model

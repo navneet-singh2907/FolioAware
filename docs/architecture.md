@@ -79,9 +79,10 @@ flowchart TD
 ## Deployment units
 
 The MVP has one Cloud Run API service and one sync CLI invoked by GitHub
-Actions. Insights begin as an explicit CLI/job entry point and need not be a
-continuously running service. All are single-tenant per deployment and share a
-configured Firestore database and Vertex AI project/location.
+Actions. Insights begin as an owner-authenticated API workflow; its application
+boundary can move unchanged to a separately scheduled job when stronger runtime
+identity separation is warranted. All are single-tenant per deployment and
+share a configured Firestore database and Vertex AI project/location.
 
 No deployment resources are created until the owner separately approves the
 cloud phase.
@@ -96,6 +97,7 @@ cloud phase.
 6. [ADR-0006: Privacy-reduced telemetry as a separate data plane](adr/0006-privacy-reduced-telemetry.md)
 7. [ADR-0007: Cloud Run and keyless GitHub Actions](adr/0007-cloud-run-and-keyless-ci.md)
 8. [ADR-0008: Direct Google SDK adapters with offline contract tests](adr/0008-direct-google-sdk-adapters.md)
+9. [ADR-0009: Deterministic, isolated insight aggregation](adr/0009-deterministic-insight-aggregation.md)
 
 ## Current platform references
 

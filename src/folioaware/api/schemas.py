@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from datetime import datetime, timedelta
+
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from pydantic.alias_generators import to_camel
 
 from folioaware.domain.answers import AnswerStatus, AskResult
+from folioaware.domain.telemetry import InsightReport, SuggestedAction
 
 
 class PublicModel(BaseModel):
@@ -67,3 +70,44 @@ class ProblemResponse(PublicModel):
     status: int
     code: str
     request_id: str
+
+
+class InsightReportRequest(PublicModel):
+    period_start: datetime
+    period_end: datetime
+
+    @model_validator(mode="after")
+    def validate_period(self) -> InsightReportRequest:
+        if self.period_start.tzinfo is None or self.period_end.tzinfo is None:
+            raise ValueError("report timestamps must include a timezone")
+        if self.period_end <= self.period_start:
+            raise ValueError("report period end must follow its start")
+        if self.period_end - self.period_start > timedelta(days=31):
+            raise ValueError("report period cannot exceed 31 days")
+        return self
+
+
+class TopicInsightResponse(PublicModel):
+    insight_id: str
+    topic: str
+    period_start: datetime
+    period_end: datetime
+    distinct_session_count: int
+    question_count: int
+    skill_verification_count: int
+    knowledge_gap_count: int
+    suggested_action: SuggestedAction
+    created_at: datetime
+
+
+class InsightReportResponse(PublicModel):
+    period_start: datetime
+    period_end: datetime
+    generated_at: datetime
+    minimum_question_count: int
+    analyzed_question_count: int
+    insights: tuple[TopicInsightResponse, ...]
+
+    @classmethod
+    def from_report(cls, report: InsightReport) -> InsightReportResponse:
+        return cls.model_validate(report.model_dump(mode="python"))

@@ -110,6 +110,29 @@ The Google adapters intentionally preserve the same application ports:
 See [ADR-0008](docs/adr/0008-direct-google-sdk-adapters.md) for the alternatives,
 limits, and reasons behind these choices.
 
+## Privacy-safe owner insights
+
+FolioAware can aggregate sanitized questions into a bounded owner report. Topic
+aliases come from `examples/synthetic-portfolio/insight-topics.yaml`; they are
+classification rules, not portfolio facts. A topic appears only after the
+configured repeated-question threshold is reached.
+
+The owner-only endpoint counts questions, pseudonymous sessions,
+skill-verification intent, and knowledge gaps, then returns a fixed suggested
+action. It persists aggregates separately and has no knowledge-write
+dependency. Individual questions and session hashes are never returned.
+
+```bash
+curl -s http://127.0.0.1:8000/v1/owner/insights/report \
+  -H "Authorization: Bearer $FOLIOAWARE_OWNER_REPORT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{"periodStart":"2026-08-01T00:00:00Z","periodEnd":"2026-09-01T00:00:00Z"}'
+```
+
+Production rejects the documented development token. Provide the real token at
+runtime from a secret store. See [ADR-0009](docs/adr/0009-deterministic-insight-aggregation.md)
+for the security boundary and migration tradeoffs.
+
 ## Project documentation
 
 - [Problem statement](docs/problem-statement.md)

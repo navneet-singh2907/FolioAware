@@ -12,14 +12,17 @@ from folioaware.adapters.google.firestore import (
     INDEX_VERSIONS,
     KNOWLEDGE_CHUNKS,
     SYSTEM,
+    TOPIC_INSIGHTS,
     VECTOR_DISTANCE_FIELD,
     VISITOR_QUESTIONS,
+    FirestoreInsightRepository,
     FirestoreKnowledgeRepository,
     FirestoreQuestionRepository,
     create_firestore_client,
 )
 from folioaware.domain.answers import AnswerStatus
 from folioaware.domain.exceptions import (
+    InsightsUnavailableError,
     KnowledgeUnavailableError,
     SyncConflictError,
     SyncValidationError,
@@ -31,7 +34,7 @@ from folioaware.domain.knowledge import (
     IndexVersion,
     KnowledgeChunk,
 )
-from folioaware.domain.telemetry import VisitorQuestion
+from folioaware.domain.telemetry import SuggestedAction, TopicInsight, VisitorQuestion
 
 NOW = datetime(2026, 8, 22, tzinfo=UTC)
 
@@ -530,6 +533,91 @@ def test_firestore_question_failure_is_safely_translated() -> None:
         repository.save(question)
 
     assert "vendor detail" not in str(error.value)
+
+
+def test_firestore_reads_question_telemetry_only_inside_period() -> None:
+    client = MagicMock()
+    query = MagicMock()
+    query.where.return_value = query
+    stored = VisitorQuestion(
+        question_id="request-1",
+        redacted_question="Have they used Kafka?",
+        answer_status=AnswerStatus.KNOWLEDGE_GAP,
+        knowledge_version="version-1",
+        created_at=NOW,
+        expires_at=NOW + timedelta(days=30),
+    )
+    query.stream.return_value = [snapshot(stored.model_dump(mode="python"))]
+    collection = MagicMock()
+    collection.where.return_value = query
+    client.collection.return_value = collection
+    repository = FirestoreQuestionRepository(
+        client=as_client(client), timeout_seconds=8
+    )
+
+    records = repository.list_between(
+        period_start=NOW - timedelta(days=1), period_end=NOW + timedelta(days=1)
+    )
+
+    assert records == (stored,)
+    client.collection.assert_called_once_with(VISITOR_QUESTIONS)
+    assert query.where.call_count == 1
+    query.stream.assert_called_once_with(timeout=8)
+
+
+def test_firestore_safely_translates_question_telemetry_read_failure() -> None:
+    client = MagicMock()
+    collection = MagicMock()
+    collection.where.side_effect = RuntimeError("vendor detail")
+    client.collection.return_value = collection
+    repository = FirestoreQuestionRepository(
+        client=as_client(client), timeout_seconds=8
+    )
+
+    with pytest.raises(InsightsUnavailableError) as error:
+        repository.list_between(period_start=NOW - timedelta(days=1), period_end=NOW)
+
+    assert "vendor detail" not in str(error.value)
+
+
+def test_firestore_replaces_period_insights_in_one_batch() -> None:
+    client = MagicMock()
+    batch = MagicMock()
+    client.batch.return_value = batch
+    stale_snapshot = MagicMock()
+    stale_snapshot.id = "stale-document"
+    query = MagicMock()
+    query.where.return_value = query
+    query.stream.return_value = [stale_snapshot]
+    reference = MagicMock()
+    collection = MagicMock()
+    collection.where.return_value = query
+    collection.document.return_value = reference
+    client.collection.return_value = collection
+    repository = FirestoreInsightRepository(client=as_client(client), timeout_seconds=9)
+    insight = TopicInsight(
+        insight_id="apache-kafka:period",
+        topic="apache-kafka",
+        period_start=NOW,
+        period_end=NOW + timedelta(days=7),
+        distinct_session_count=2,
+        question_count=3,
+        skill_verification_count=3,
+        knowledge_gap_count=3,
+        suggested_action=SuggestedAction.BUILD_PROJECT,
+        created_at=NOW,
+    )
+
+    repository.replace_period(
+        period_start=insight.period_start,
+        period_end=insight.period_end,
+        insights=(insight,),
+    )
+
+    client.collection.assert_called_once_with(TOPIC_INSIGHTS)
+    batch.delete.assert_called_once_with(stale_snapshot.reference)
+    batch.set.assert_called_once_with(reference, insight.model_dump(mode="python"))
+    batch.commit.assert_called_once_with(timeout=9)
 
 
 def test_firestore_client_factory_passes_explicit_single_tenant_database(

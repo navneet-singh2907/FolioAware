@@ -141,6 +141,24 @@ Response: `202 Accepted`
 Feedback is telemetry. It cannot alter an answer, knowledge chunk, or active
 knowledge version.
 
+### `POST /v1/owner/insights/report`
+
+Generates and stores a bounded insight report from privacy-reduced questions.
+It requires an owner bearer token and accepts an inclusive start/exclusive end
+period of no more than 31 days.
+
+```json
+{
+  "periodStart": "2026-08-17T00:00:00Z",
+  "periodEnd": "2026-08-24T00:00:00Z"
+}
+```
+
+The response contains `analyzedQuestionCount`, the configured
+`minimumQuestionCount`, and repeated `insights`. Authentication failure returns
+a generic `401` problem response. The endpoint never returns individual
+questions or session hashes.
+
 ## Error contract
 
 Transport, validation, dependency, and rate-limit failures use
@@ -363,7 +381,7 @@ Feedback cannot modify the original question record or any knowledge document.
 
 ### `topic_insights`
 
-Deferred from the first slice, but its boundary is fixed:
+Implemented by the deterministic insight-aggregation slice:
 
 ```json
 {
@@ -373,6 +391,7 @@ Deferred from the first slice, but its boundary is fixed:
   "period_end": "2026-08-24T00:00:00Z",
   "distinct_session_count": 4,
   "question_count": 7,
+  "skill_verification_count": 7,
   "knowledge_gap_count": 6,
   "suggested_action": "build_project",
   "created_at": "2026-08-24T01:00:00Z"
@@ -481,6 +500,7 @@ The smallest implementation must support:
 - in-memory adapters
 - `answered` and `knowledge_gap` outcomes
 
-Readiness, feedback, partial answers, Google adapters, topic insights, and cloud
-deployment follow in later bounded changes.
+Readiness, feedback, partial answers, cloud deployment, and notifications follow
+in later bounded changes. Google adapters and deterministic topic insights are
+implemented.
 

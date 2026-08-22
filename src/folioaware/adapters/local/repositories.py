@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from datetime import datetime
 
 from folioaware.domain.answers import Evidence
 from folioaware.domain.exceptions import (
@@ -18,7 +19,7 @@ from folioaware.domain.knowledge import (
     KnowledgeChunk,
     Visibility,
 )
-from folioaware.domain.telemetry import VisitorQuestion
+from folioaware.domain.telemetry import TopicInsight, VisitorQuestion
 
 
 def _cosine_distance(left: tuple[float, ...], right: tuple[float, ...]) -> float:
@@ -134,3 +135,34 @@ class InMemoryQuestionRepository:
 
     def save(self, question: VisitorQuestion) -> None:
         self.records.append(question)
+
+    def list_between(
+        self, *, period_start: datetime, period_end: datetime
+    ) -> tuple[VisitorQuestion, ...]:
+        return tuple(
+            question
+            for question in self.records
+            if period_start <= question.created_at < period_end
+        )
+
+
+class InMemoryInsightRepository:
+    def __init__(self) -> None:
+        self.records: dict[str, TopicInsight] = {}
+
+    def replace_period(
+        self,
+        *,
+        period_start: datetime,
+        period_end: datetime,
+        insights: tuple[TopicInsight, ...],
+    ) -> None:
+        self.records = {
+            insight_id: insight
+            for insight_id, insight in self.records.items()
+            if not (
+                insight.period_start == period_start
+                and insight.period_end == period_end
+            )
+        }
+        self.records.update({insight.insight_id: insight for insight in insights})

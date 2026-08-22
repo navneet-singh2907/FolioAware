@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 from collections.abc import Mapping, Sequence
+from datetime import datetime
 from typing import Any, cast
 
 from google.api_core.exceptions import Aborted, Conflict
@@ -16,6 +17,7 @@ from pydantic import ValidationError
 from folioaware.domain.answers import Evidence
 from folioaware.domain.exceptions import (
     FolioAwareError,
+    InsightsUnavailableError,
     KnowledgeUnavailableError,
     SyncConflictError,
     SyncValidationError,
@@ -26,15 +28,17 @@ from folioaware.domain.knowledge import (
     IndexVersion,
     KnowledgeChunk,
 )
-from folioaware.domain.telemetry import VisitorQuestion
+from folioaware.domain.telemetry import TopicInsight, VisitorQuestion
 
 KNOWLEDGE_CHUNKS = "knowledge_chunks"
 INDEX_VERSIONS = "index_versions"
 VISITOR_QUESTIONS = "visitor_questions"
+TOPIC_INSIGHTS = "topic_insights"
 SYSTEM = "system"
 KNOWLEDGE_POINTER = "knowledge"
 VECTOR_DISTANCE_FIELD = "vector_distance"
 MAX_BATCH_CHUNKS = 499
+MAX_PERIOD_INSIGHTS = 100
 
 
 def create_firestore_client(*, project: str, database: str) -> firestore_v1.Client:
@@ -59,6 +63,10 @@ def _chunk_document_id(chunk: KnowledgeChunk) -> str:
 
 def _question_document_id(question_id: str) -> str:
     return _safe_document_id("visitor-question", question_id)
+
+
+def _insight_document_id(insight_id: str) -> str:
+    return _safe_document_id("topic-insight", insight_id)
 
 
 def _index_to_document(version: IndexVersion) -> dict[str, Any]:
@@ -352,3 +360,64 @@ class FirestoreQuestionRepository:
             ).create(document, timeout=self._timeout_seconds)
         except Exception as error:
             raise RuntimeError("question persistence failed") from error
+
+    def list_between(
+        self, *, period_start: datetime, period_end: datetime
+    ) -> tuple[VisitorQuestion, ...]:
+        try:
+            query = self._client.collection(VISITOR_QUESTIONS).where(
+                filter=FieldFilter("created_at", ">=", period_start)
+            )
+            query = query.where(filter=FieldFilter("created_at", "<", period_end))
+            return tuple(
+                VisitorQuestion.model_validate(_snapshot_data(snapshot))
+                for snapshot in query.stream(timeout=self._timeout_seconds)
+            )
+        except Exception as error:
+            raise InsightsUnavailableError("question telemetry read failed") from error
+
+
+class FirestoreInsightRepository:
+    def __init__(self, *, client: firestore_v1.Client, timeout_seconds: int) -> None:
+        self._client = client
+        self._timeout_seconds = timeout_seconds
+
+    def replace_period(
+        self,
+        *,
+        period_start: datetime,
+        period_end: datetime,
+        insights: tuple[TopicInsight, ...],
+    ) -> None:
+        if len(insights) > MAX_PERIOD_INSIGHTS:
+            raise InsightsUnavailableError("insight period exceeds bounded report size")
+        try:
+            collection = self._client.collection(TOPIC_INSIGHTS)
+            query = collection.where(
+                filter=FieldFilter("period_start", "==", period_start)
+            )
+            query = query.where(filter=FieldFilter("period_end", "==", period_end))
+            existing = tuple(query.stream(timeout=self._timeout_seconds))
+            current_ids = {
+                _insight_document_id(insight.insight_id) for insight in insights
+            }
+            stale = tuple(
+                snapshot for snapshot in existing if snapshot.id not in current_ids
+            )
+            if len(stale) + len(insights) > MAX_BATCH_CHUNKS:
+                raise InsightsUnavailableError(
+                    "insight replacement exceeds one Firestore batch"
+                )
+            batch = self._client.batch()
+            for snapshot in stale:
+                batch.delete(snapshot.reference)
+            for insight in insights:
+                reference = collection.document(
+                    _insight_document_id(insight.insight_id)
+                )
+                batch.set(reference, insight.model_dump(mode="python"))
+            batch.commit(timeout=self._timeout_seconds)
+        except InsightsUnavailableError:
+            raise
+        except Exception as error:
+            raise InsightsUnavailableError("insight persistence failed") from error

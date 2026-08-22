@@ -13,9 +13,20 @@ def test_production_accepts_explicit_strong_session_secret() -> None:
     settings = Settings(
         environment="production",
         session_hash_secret=SecretStr("a-strong-production-secret-with-32-characters"),
+        owner_report_token=SecretStr("a-strong-owner-report-token-with-32-characters"),
     )
 
     assert settings.environment == "production"
+
+
+def test_production_rejects_development_owner_report_token() -> None:
+    with pytest.raises(ValidationError, match="owner report token"):
+        Settings(
+            environment="production",
+            session_hash_secret=SecretStr(
+                "a-strong-production-secret-with-32-characters"
+            ),
+        )
 
 
 def test_google_backend_requires_project_and_generation_model() -> None:

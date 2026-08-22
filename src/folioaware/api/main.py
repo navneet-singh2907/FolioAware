@@ -1,12 +1,23 @@
 """FastAPI application composition root."""
 
-from fastapi import FastAPI, Request
+from hmac import compare_digest
+from typing import Annotated
+
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
+from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from folioaware.api.dependencies import ApplicationContainer, build_container
-from folioaware.api.schemas import AskRequest, AskResponse, ProblemResponse
+from folioaware.api.schemas import (
+    AskRequest,
+    AskResponse,
+    InsightReportRequest,
+    InsightReportResponse,
+    ProblemResponse,
+)
 from folioaware.domain.exceptions import (
+    InsightsUnavailableError,
     InvalidModelOutputError,
     KnowledgeUnavailableError,
     ModelUnavailableError,
@@ -37,19 +48,52 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
         version="0.1.0",
     )
     application.state.container = dependencies
+    bearer = HTTPBearer(auto_error=False)
 
     def next_request_id() -> str:
         return dependencies.identifiers.new()
 
+    def require_owner(
+        credentials: Annotated[HTTPAuthorizationCredentials | None, Depends(bearer)],
+    ) -> None:
+        if credentials is None or not compare_digest(
+            credentials.credentials,
+            dependencies.owner_report_token.get_secret_value(),
+        ):
+            raise HTTPException(status_code=401, detail="owner authentication required")
+
     @application.exception_handler(RequestValidationError)
     async def validation_error(
-        _request: Request, _error: RequestValidationError
+        request: Request, _error: RequestValidationError
     ) -> JSONResponse:
+        is_question = request.url.path == "/v1/ask"
         return _problem(
             request_id=next_request_id(),
             status=422,
-            code="INVALID_QUESTION",
-            title="Question failed validation",
+            code="INVALID_QUESTION" if is_question else "INVALID_REQUEST",
+            title=(
+                "Question failed validation"
+                if is_question
+                else "Request failed validation"
+            ),
+        )
+
+    @application.exception_handler(HTTPException)
+    async def http_error(_request: Request, error: HTTPException) -> JSONResponse:
+        if error.status_code == 401:
+            response = _problem(
+                request_id=next_request_id(),
+                status=401,
+                code="OWNER_AUTHENTICATION_REQUIRED",
+                title="Owner authentication is required",
+            )
+            response.headers["WWW-Authenticate"] = "Bearer"
+            return response
+        return _problem(
+            request_id=next_request_id(),
+            status=error.status_code,
+            code="HTTP_ERROR",
+            title="The request could not be completed",
         )
 
     @application.exception_handler(KnowledgeUnavailableError)
@@ -61,6 +105,17 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
             status=503,
             code="KNOWLEDGE_UNAVAILABLE",
             title="Verified knowledge is temporarily unavailable",
+        )
+
+    @application.exception_handler(InsightsUnavailableError)
+    async def insights_error(
+        _request: Request, _error: InsightsUnavailableError
+    ) -> JSONResponse:
+        return _problem(
+            request_id=next_request_id(),
+            status=503,
+            code="INSIGHTS_UNAVAILABLE",
+            title="Owner insights are temporarily unavailable",
         )
 
     @application.exception_handler(ModelUnavailableError)
@@ -101,6 +156,22 @@ def create_app(container: ApplicationContainer | None = None) -> FastAPI:
             session_id=payload.session_id,
         )
         return AskResponse.from_result(result)
+
+    @application.post(
+        "/v1/owner/insights/report",
+        response_model=InsightReportResponse,
+        response_model_by_alias=True,
+        dependencies=[Depends(require_owner)],
+        tags=["owner insights"],
+    )
+    def generate_insight_report(
+        payload: InsightReportRequest,
+    ) -> InsightReportResponse:
+        report = dependencies.generate_insights.execute(
+            period_start=payload.period_start,
+            period_end=payload.period_end,
+        )
+        return InsightReportResponse.from_report(report)
 
     return application
 

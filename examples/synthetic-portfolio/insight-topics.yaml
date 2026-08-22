@@ -1,0 +1,16 @@
+topics:
+  - topic: apache-kafka
+    aliases:
+      - apache kafka
+      - kafka
+  - topic: fastapi
+    aliases:
+      - fastapi
+  - topic: google-cloud-run
+    aliases:
+      - cloud run
+      - google cloud run
+  - topic: postgresql
+    aliases:
+      - postgres
+      - postgresql
