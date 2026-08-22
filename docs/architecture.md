@@ -95,12 +95,13 @@ cloud phase.
 5. [ADR-0005: Evidence-gated generation and application-owned citations](adr/0005-evidence-gated-generation-and-citations.md)
 6. [ADR-0006: Privacy-reduced telemetry as a separate data plane](adr/0006-privacy-reduced-telemetry.md)
 7. [ADR-0007: Cloud Run and keyless GitHub Actions](adr/0007-cloud-run-and-keyless-ci.md)
+8. [ADR-0008: Direct Google SDK adapters with offline contract tests](adr/0008-direct-google-sdk-adapters.md)
 
 ## Current platform references
 
 - [Firestore vector search](https://docs.cloud.google.com/firestore/native/docs/vector-search)
 - [Vertex AI text embeddings](https://docs.cloud.google.com/vertex-ai/generative-ai/docs/embeddings/get-text-embeddings)
 - [Vertex AI structured generation configuration](https://cloud.google.com/vertex-ai/generative-ai/docs/reference/rest/v1beta1/GenerationConfig)
+- [Google Gen AI Python SDK](https://googleapis.github.io/python-genai/)
 - [Cloud Run service configuration](https://docs.cloud.google.com/run/docs/configuring)
 - [Workload Identity Federation for deployment pipelines](https://docs.cloud.google.com/iam/docs/workload-identity-federation-with-deployment-pipelines)
-

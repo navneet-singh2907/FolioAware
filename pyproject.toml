@@ -12,6 +12,8 @@ license = "LicenseRef-Proprietary-Pending-Open-Source-Selection"
 authors = [{ name = "FolioAware contributors" }]
 dependencies = [
   "fastapi>=0.141,<1",
+  "google-cloud-firestore>=2.28,<3",
+  "google-genai>=2.16,<3",
   "pydantic>=2.13,<3",
   "pydantic-settings>=2.11,<3",
   "pyyaml>=6.0,<7",

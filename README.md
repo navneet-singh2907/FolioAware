@@ -7,11 +7,11 @@ FolioAware is a reusable, evidence-grounded retrieval-augmented generation
 returns application-owned citations, safely abstains when evidence is weak, and
 keeps privacy-reduced visitor-question telemetry outside the knowledge store.
 
-This branch is intentionally a small local vertical slice. It uses synthetic
-portfolio fixtures, an in-memory repository, hashed-token embeddings, and an
-extractive generator. Those deterministic adapters prove the workflow and
-trust boundaries without Google Cloud credentials, network access, or cost.
-Firestore and Vertex AI adapters are follow-on work.
+The safe default is a local vertical slice using synthetic portfolio fixtures,
+an in-memory repository, hashed-token embeddings, and an extractive generator.
+Direct Vertex AI and Firestore adapters are also available behind explicit
+configuration. Their tests inject fake SDK clients, so development and CI need
+no Google Cloud credentials, network calls, or cost.
 
 ## What the slice proves
 
@@ -91,6 +91,25 @@ names but contains no credential. Production mode rejects the development HMAC
 secret. The local redactor reduces exposure of common email addresses and phone
 numbers; it is not a guarantee of anonymity.
 
+`FOLIOAWARE_BACKEND=local` is the default and never constructs a Google client.
+The `google` backend requires an explicit project and generation model. It uses
+Application Default Credentials and expects the Firestore database and required
+vector/composite index to exist already. Starting FolioAware never provisions
+APIs, IAM, indexes, databases, or Cloud Run services.
+
+The Google adapters intentionally preserve the same application ports:
+
+- Vertex embeddings select document/query task types and disable silent input
+  truncation.
+- Vertex generation requests structured JSON but remains untrusted.
+- Firestore vector search filters by active version, public visibility,
+  verified status, and active chunks.
+- Firestore changes the active knowledge pointer transactionally.
+- Sanitized questions are written only to `visitor_questions`.
+
+See [ADR-0008](docs/adr/0008-direct-google-sdk-adapters.md) for the alternatives,
+limits, and reasons behind these choices.
+
 ## Project documentation
 
 - [Problem statement](docs/problem-statement.md)
@@ -103,5 +122,5 @@ numbers; it is not a guarantee of anonymity.
 - [Portable approved-source schema](schemas/knowledge-source.schema.json)
 
 No real portfolio content or visitor analytics are included. No cloud resource,
-deployment, service account, or billable infrastructure is created by this
-slice.
+deployment, service account, API key, or billable infrastructure is created by
+this repository.
