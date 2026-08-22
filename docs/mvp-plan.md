@@ -382,7 +382,7 @@ Names may be refined when each branch starts, but concerns remain separated.
 Stop and request direction before:
 
 - creating or modifying a billable cloud resource;
-- choosing a license for public release;
+- changing the Apache-2.0 license without explicit owner approval;
 - weakening an evidence, citation, privacy, or IAM invariant;
 - adding a framework or service that materially changes architecture or cost;
 - using real portfolio content or analytics; or

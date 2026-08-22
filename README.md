@@ -147,3 +147,10 @@ for the security boundary and migration tradeoffs.
 No real portfolio content or visitor analytics are included. No cloud resource,
 deployment, service account, API key, or billable infrastructure is created by
 this repository.
+
+## License
+
+FolioAware is open-source software licensed under the
+[Apache License 2.0](LICENSE). Portfolio content, deployment configuration, and
+visitor analytics supplied by an adopter remain outside this repository and
+are not relicensed merely by using FolioAware.
