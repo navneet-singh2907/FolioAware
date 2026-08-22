@@ -1,0 +1,15 @@
+schemaVersion: 1
+sourceId: project-atlas
+sourceType: project
+title: Project Atlas
+citationUrl: /projects/atlas
+content: >-
+  Project Atlas is a synthetic inventory forecasting API built with Python and
+  FastAPI. It was packaged with Docker and deployed to Google Cloud Run.
+tags:
+  - python
+  - fastapi
+  - docker
+  - cloud-run
+visibility: public
+

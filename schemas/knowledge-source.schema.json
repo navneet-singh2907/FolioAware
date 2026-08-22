@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://folioaware.dev/schemas/knowledge-source.schema.json",
+  "title": "FolioAware approved knowledge source",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "sourceId",
+    "sourceType",
+    "title",
+    "citationUrl",
+    "content"
+  ],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "sourceId": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 100,
+      "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+    },
+    "sourceType": {
+      "enum": ["project", "experience", "skill", "education", "profile"]
+    },
+    "title": { "type": "string", "minLength": 1, "maxLength": 120 },
+    "citationUrl": { "type": "string", "minLength": 1, "maxLength": 2048 },
+    "content": { "type": "string", "minLength": 1, "maxLength": 20000 },
+    "tags": {
+      "type": "array",
+      "maxItems": 20,
+      "uniqueItems": true,
+      "items": {
+        "type": "string",
+        "pattern": "^[a-z0-9]+(?:-[a-z0-9]+)*$"
+      }
+    },
+    "visibility": { "enum": ["public", "private"], "default": "public" }
+  }
+}

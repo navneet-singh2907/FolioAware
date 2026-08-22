@@ -1,0 +1,71 @@
+[build-system]
+requires = ["uv_build>=0.11.32,<0.13"]
+build-backend = "uv_build"
+
+[project]
+name = "folio-aware"
+version = "0.1.0"
+description = "An evidence-grounded portfolio agent that stays current."
+readme = "README.md"
+requires-python = ">=3.12,<3.15"
+license = "LicenseRef-Proprietary-Pending-Open-Source-Selection"
+authors = [{ name = "FolioAware contributors" }]
+dependencies = [
+  "fastapi>=0.141,<1",
+  "pydantic>=2.13,<3",
+  "pydantic-settings>=2.11,<3",
+  "pyyaml>=6.0,<7",
+  "uvicorn>=0.35,<1",
+]
+
+[project.scripts]
+folioaware = "folioaware.cli.main:main"
+
+[dependency-groups]
+dev = [
+  "httpx2>=2.10,<3",
+  "mypy>=1.18,<2",
+  "pytest>=8.4,<10",
+  "pytest-cov>=7,<8",
+  "ruff>=0.13,<1",
+  "types-pyyaml>=6.0,<7",
+]
+
+[tool.uv]
+required-version = ">=0.11.24,<0.13"
+
+[tool.uv.build-backend]
+module-name = "folioaware"
+
+[tool.ruff]
+target-version = "py312"
+line-length = 88
+extend-exclude = ["uv.lock"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+pretty = true
+show_error_codes = true
+files = ["src", "tests"]
+
+[tool.pytest.ini_options]
+addopts = "-ra --strict-config --strict-markers"
+testpaths = ["tests"]
+
+[tool.coverage.run]
+branch = true
+source = ["folioaware"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = true
+fail_under = 90

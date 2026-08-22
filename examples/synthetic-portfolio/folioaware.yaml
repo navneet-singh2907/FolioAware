@@ -1,0 +1,6 @@
+schemaVersion: 1
+sources:
+  - path: content/project-atlas.yaml
+  - path: content/project-lantern.yaml
+  - path: content/project-meadow.yaml
+
