@@ -48,8 +48,9 @@ folio-aware/
 │       │   ├── errors.py
 │       │   ├── main.py
 │       │   └── routes/
-│       ├── application/                    # initial: deterministic use cases
+│       ├── application/                    # deterministic use cases
 │       │   ├── answer_question.py
+│       │   ├── generate_insights.py
 │       │   └── sync_knowledge.py
 │       ├── domain/                         # initial: pure models and policies
 │       │   ├── answers.py
@@ -68,7 +69,7 @@ folio-aware/
 │       ├── ingestion/                      # initial: parse, validate, chunk, hash
 │       ├── security/                       # initial: redaction and input limits
 │       ├── cli/                            # initial: sync command entry point
-│       ├── analytics/                      # later: topic/gap aggregation
+│       ├── analytics/                      # current: topic/intent rules
 │       └── notifications/                  # later: owner delivery adapters
 ├── tests/
 │   ├── contract/                           # port/adapter behavior contracts
@@ -132,9 +133,10 @@ the entry point or application boundary.
 
 ### `analytics` and `notifications`
 
-These packages are deferred. Analytics reads privacy-reduced telemetry and
-writes aggregate insights. Notifications deliver those insights. Neither may
-depend on or write through the knowledge repository.
+Analytics classifies privacy-reduced telemetry using owner-configured,
+deterministic rules. The insight application use case writes aggregate records.
+Notifications remain deferred. Neither may depend on or write through the
+knowledge repository.
 
 ## Dependency direction
 

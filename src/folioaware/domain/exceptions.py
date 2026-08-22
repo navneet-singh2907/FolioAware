@@ -17,6 +17,10 @@ class ModelUnavailableError(FolioAwareError):
     """A required model dependency is unavailable or timed out."""
 
 
+class InsightsUnavailableError(FolioAwareError):
+    """Privacy-reduced telemetry or aggregate insights are unavailable."""
+
+
 class InvalidModelOutputError(FolioAwareError):
     """A model candidate failed schema or citation validation."""
 

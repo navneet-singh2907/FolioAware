@@ -1,6 +1,7 @@
 """Direct Google SDK adapters for production composition."""
 
 from folioaware.adapters.google.firestore import (
+    FirestoreInsightRepository,
     FirestoreKnowledgeRepository,
     FirestoreQuestionRepository,
     create_firestore_client,
@@ -12,6 +13,7 @@ from folioaware.adapters.google.vertex import (
 )
 
 __all__ = [
+    "FirestoreInsightRepository",
     "FirestoreKnowledgeRepository",
     "FirestoreQuestionRepository",
     "VertexEmbeddingProvider",

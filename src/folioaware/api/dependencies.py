@@ -5,8 +5,10 @@ from pathlib import Path
 
 from google import genai
 from google.cloud import firestore_v1
+from pydantic import SecretStr
 
 from folioaware.adapters.google import (
+    FirestoreInsightRepository,
     FirestoreKnowledgeRepository,
     FirestoreQuestionRepository,
     VertexEmbeddingProvider,
@@ -17,12 +19,15 @@ from folioaware.adapters.google import (
 from folioaware.adapters.local import (
     DeterministicEmbeddingProvider,
     DeterministicGenerationProvider,
+    InMemoryInsightRepository,
     InMemoryKnowledgeRepository,
     InMemoryQuestionRepository,
     SystemClock,
     UUID4Provider,
 )
+from folioaware.analytics import DeterministicQuestionClassifier, load_topic_rules
 from folioaware.application.answer_question import AnswerQuestion
+from folioaware.application.generate_insights import GenerateInsightReport
 from folioaware.application.sync_knowledge import SyncKnowledge
 from folioaware.config import Settings
 from folioaware.ingestion import load_approved_sources
@@ -33,14 +38,17 @@ from folioaware.security import TelemetrySanitizer
 @dataclass(frozen=True, slots=True)
 class ApplicationContainer:
     answer_question: AnswerQuestion
+    generate_insights: GenerateInsightReport
     clock: Clock
     identifiers: IdentifierProvider
+    owner_report_token: SecretStr
 
 
 @dataclass(frozen=True, slots=True)
 class LocalApplicationContainer(ApplicationContainer):
     knowledge: InMemoryKnowledgeRepository
     questions: InMemoryQuestionRepository
+    insights: InMemoryInsightRepository
     embeddings: DeterministicEmbeddingProvider
     generation: DeterministicGenerationProvider
 
@@ -49,6 +57,7 @@ class LocalApplicationContainer(ApplicationContainer):
 class GoogleApplicationContainer(ApplicationContainer):
     knowledge: FirestoreKnowledgeRepository
     questions: FirestoreQuestionRepository
+    insights: FirestoreInsightRepository
     embeddings: VertexEmbeddingProvider
     generation: VertexGenerationProvider
 
@@ -65,6 +74,10 @@ def build_local_container(
     generation = DeterministicGenerationProvider()
     knowledge = InMemoryKnowledgeRepository()
     questions = InMemoryQuestionRepository()
+    insights = InMemoryInsightRepository()
+    classifier = DeterministicQuestionClassifier(
+        load_topic_rules(resolved_settings.insight_rules_path)
+    )
     sources = load_approved_sources(content_root or resolved_settings.content_root)
     SyncKnowledge(
         embeddings=embeddings,
@@ -88,10 +101,19 @@ def build_local_container(
     )
     return LocalApplicationContainer(
         answer_question=answer_question,
+        generate_insights=GenerateInsightReport(
+            questions=questions,
+            classifier=classifier,
+            insights=insights,
+            clock=clock,
+            minimum_question_count=resolved_settings.insight_min_question_count,
+        ),
         clock=clock,
         identifiers=identifiers,
+        owner_report_token=resolved_settings.owner_report_token,
         knowledge=knowledge,
         questions=questions,
+        insights=insights,
         embeddings=embeddings,
         generation=generation,
     )
@@ -138,6 +160,13 @@ def build_google_container(
         client=resolved_firestore,
         timeout_seconds=settings.google_request_timeout_seconds,
     )
+    insights = FirestoreInsightRepository(
+        client=resolved_firestore,
+        timeout_seconds=settings.google_request_timeout_seconds,
+    )
+    classifier = DeterministicQuestionClassifier(
+        load_topic_rules(settings.insight_rules_path)
+    )
     answer_question = AnswerQuestion(
         embeddings=embeddings,
         generation=generation,
@@ -152,10 +181,19 @@ def build_google_container(
     )
     return GoogleApplicationContainer(
         answer_question=answer_question,
+        generate_insights=GenerateInsightReport(
+            questions=questions,
+            classifier=classifier,
+            insights=insights,
+            clock=clock,
+            minimum_question_count=settings.insight_min_question_count,
+        ),
         clock=clock,
         identifiers=identifiers,
+        owner_report_token=settings.owner_report_token,
         knowledge=knowledge,
         questions=questions,
+        insights=insights,
         embeddings=embeddings,
         generation=generation,
     )

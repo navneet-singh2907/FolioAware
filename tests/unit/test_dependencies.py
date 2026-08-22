@@ -5,6 +5,7 @@ from google import genai
 from google.cloud import firestore_v1
 
 from folioaware.adapters.google import (
+    FirestoreInsightRepository,
     FirestoreKnowledgeRepository,
     FirestoreQuestionRepository,
     VertexEmbeddingProvider,
@@ -45,6 +46,7 @@ def test_google_composition_accepts_injected_clients_without_api_calls() -> None
     assert isinstance(container.generation, VertexGenerationProvider)
     assert isinstance(container.knowledge, FirestoreKnowledgeRepository)
     assert isinstance(container.questions, FirestoreQuestionRepository)
+    assert isinstance(container.insights, FirestoreInsightRepository)
     vertex_client.models.embed_content.assert_not_called()
     vertex_client.models.generate_content.assert_not_called()
     firestore_client.collection.assert_not_called()
