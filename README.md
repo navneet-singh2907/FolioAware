@@ -79,10 +79,16 @@ uv run ruff format --check .
 uv run mypy
 uv run pytest --cov --cov-report=term-missing
 docker build --tag folio-aware:local .
+terraform -chdir=deploy/terraform fmt -check -recursive
+terraform -chdir=deploy/terraform init -backend=false -lockfile=readonly
+terraform -chdir=deploy/terraform validate
+terraform -chdir=deploy/terraform test
 ```
 
 The test suite is offline and uses no cloud credentials. CI runs the same lint,
-format, type, test, image-build, non-root, and health checks.
+format, type, test, image-build, non-root, health, and mocked-infrastructure
+checks. Terraform initialization downloads provider plugins but does not access
+a state backend or Google Cloud.
 
 ## Configuration
 
@@ -109,6 +115,24 @@ The Google adapters intentionally preserve the same application ports:
 
 See [ADR-0008](docs/adr/0008-direct-google-sdk-adapters.md) for the alternatives,
 limits, and reasons behind these choices.
+
+## Deployment foundation
+
+The reusable, non-applied Google Cloud definition lives in
+[`deploy/terraform`](deploy/terraform/README.md). It describes Cloud Run with
+minimum zero and maximum two instances, Firestore indexes, Artifact Registry,
+secret containers, least-privilege service accounts, and workflow-scoped
+Workload Identity Federation. No service-account JSON keys are used.
+
+Infrastructure validation is offline and automatic; a real plan or apply is
+never automatic and requires explicit approval. The reusable deploy workflow
+can only build an immutable source commit and update an existing service's
+image. A production cloud-sync workflow is intentionally deferred until the
+current local-only sync composition has a Google-backed entry point.
+
+See [ADR-0010](docs/adr/0010-terraform-foundation-and-wif.md) and the
+[permission map](docs/infrastructure-permissions.md) for the trust boundaries,
+bootstrap phases, and Firestore IAM limitation.
 
 ## Privacy-safe owner insights
 
@@ -142,6 +166,8 @@ for the security boundary and migration tradeoffs.
 - [Threat model](docs/threat-model.md)
 - [Evidence policy](docs/evidence-policy.md)
 - [MVP vertical-slice plan](docs/mvp-plan.md)
+- [Terraform deployment foundation](deploy/terraform/README.md)
+- [Infrastructure permission map](docs/infrastructure-permissions.md)
 - [Portable approved-source schema](schemas/knowledge-source.schema.json)
 
 No real portfolio content or visitor analytics are included. No cloud resource,

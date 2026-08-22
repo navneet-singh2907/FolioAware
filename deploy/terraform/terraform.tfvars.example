@@ -1,0 +1,20 @@
+# Copy to terraform.tfvars and replace every placeholder. terraform.tfvars is
+# ignored because adopter-specific IDs are configuration, not public fixtures.
+project_id                 = "example-folio-aware-project"
+github_repository_id       = "123456789"
+github_repository_owner_id = "987654321"
+generation_model           = "gemini-2.5-flash"
+
+# Pin the reusable workflow to the exact FolioAware commit used by the caller.
+deploy_workflow_ref = "example-org/folio-aware/.github/workflows/deploy-reusable.yml@0123456789abcdef0123456789abcdef01234567"
+
+# Reserved until the production Google sync entry point and workflow exist.
+sync_workflow_ref = "example-org/folio-aware/.github/workflows/sync-reusable.yml@0123456789abcdef0123456789abcdef01234567"
+
+# Safe bootstrap default: foundation only. Do not enable until an image digest
+# and both Secret Manager versions exist.
+deploy_service = false
+
+# Phase two example:
+# deploy_service = true
+# container_image = "us-central1-docker.pkg.dev/example-folio-aware-project/folio-aware/api@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"

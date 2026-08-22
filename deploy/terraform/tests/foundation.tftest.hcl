@@ -1,0 +1,76 @@
+mock_provider "google" {
+  override_during = plan
+
+  mock_data "google_project" {
+    defaults = {
+      number = "123456789012"
+    }
+  }
+}
+
+variables {
+  project_id                 = "example-folio-aware-project"
+  github_repository_id       = "123456789"
+  github_repository_owner_id = "987654321"
+  generation_model           = "gemini-2.5-flash"
+  deploy_workflow_ref        = "example-org/folio-aware/.github/workflows/deploy-reusable.yml@0123456789abcdef0123456789abcdef01234567"
+  sync_workflow_ref          = "example-org/folio-aware/.github/workflows/sync-reusable.yml@0123456789abcdef0123456789abcdef01234567"
+}
+
+run "foundation_is_safe_by_default" {
+  command = plan
+
+  assert {
+    condition     = length(google_cloud_run_v2_service.api) == 0
+    error_message = "Cloud Run must not be created during the foundation phase."
+  }
+
+  assert {
+    condition     = google_firestore_database.folioaware.delete_protection_state == "DELETE_PROTECTION_ENABLED"
+    error_message = "Firestore delete protection must remain enabled."
+  }
+
+  assert {
+    condition     = google_artifact_registry_repository.images.docker_config[0].immutable_tags
+    error_message = "Artifact Registry tags must be immutable."
+  }
+
+  assert {
+    condition     = strcontains(google_iam_workload_identity_pool_provider.deploy_github.attribute_condition, "assertion.repository_id == '123456789'")
+    error_message = "Deploy WIF must restrict the immutable repository ID."
+  }
+
+  assert {
+    condition     = strcontains(google_iam_workload_identity_pool_provider.deploy_github.attribute_condition, "assertion.job_workflow_ref")
+    error_message = "Deploy WIF must restrict the exact reusable workflow."
+  }
+}
+
+run "service_has_cost_and_safety_guards" {
+  command = plan
+
+  variables {
+    deploy_service  = true
+    container_image = "us-central1-docker.pkg.dev/example-folio-aware-project/folio-aware/api@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_service.api[0].scaling[0].min_instance_count == 0
+    error_message = "Cloud Run minimum instances must remain zero."
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_service.api[0].scaling[0].max_instance_count == 2
+    error_message = "Cloud Run maximum instances must remain two."
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_service.api[0].template[0].containers[0].resources[0].cpu_idle
+    error_message = "CPU idling must remain enabled for request-based billing."
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_service.api[0].deletion_protection
+    error_message = "Cloud Run deletion protection must remain enabled."
+  }
+}

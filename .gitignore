@@ -21,6 +21,20 @@ venv/
 !.env.example
 *.json.key
 *service-account*.json
+gha-creds-*.json
+
+# Terraform local data and state (the dependency lock is intentionally committed)
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfvars
+!*.tfvars.example
+crash.log
+crash.*.log
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
 
 # Editors and operating systems
 .idea/

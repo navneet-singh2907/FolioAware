@@ -98,6 +98,7 @@ cloud phase.
 7. [ADR-0007: Cloud Run and keyless GitHub Actions](adr/0007-cloud-run-and-keyless-ci.md)
 8. [ADR-0008: Direct Google SDK adapters with offline contract tests](adr/0008-direct-google-sdk-adapters.md)
 9. [ADR-0009: Deterministic, isolated insight aggregation](adr/0009-deterministic-insight-aggregation.md)
+10. [ADR-0010: Terraform foundation and workflow-scoped WIF](adr/0010-terraform-foundation-and-wif.md)
 
 ## Current platform references
 

@@ -16,4 +16,8 @@ deploy
 !.env.example
 *.json.key
 *service-account*.json
+gha-creds-*.json
+*.tfstate
+*.tfstate.*
+*.tfvars
 

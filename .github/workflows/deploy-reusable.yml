@@ -1,0 +1,128 @@
+name: Reusable Cloud Run deploy
+
+on:
+  workflow_call:
+    inputs:
+      project_id:
+        description: Google Cloud project containing this single deployment
+        required: true
+        type: string
+      region:
+        description: Cloud Run and Artifact Registry region
+        required: false
+        default: us-central1
+        type: string
+      artifact_repository:
+        description: Artifact Registry Docker repository ID
+        required: false
+        default: folio-aware
+        type: string
+      service_name:
+        description: Existing Cloud Run service to update
+        required: false
+        default: folio-aware
+        type: string
+      workload_identity_provider:
+        description: Full deploy Workload Identity Provider resource name
+        required: true
+        type: string
+      deploy_service_account:
+        description: Deploy service-account email
+        required: true
+        type: string
+      source_repository:
+        description: FolioAware source repository in owner/name form
+        required: true
+        type: string
+      source_commit:
+        description: Exact 40-character FolioAware source commit SHA
+        required: true
+        type: string
+      environment:
+        description: Optional protected GitHub deployment environment
+        required: false
+        default: production
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: deploy-${{ inputs.project_id }}-${{ inputs.service_name }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Validate immutable source reference
+        env:
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          if [[ ! "$SOURCE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "source_commit must be a lowercase 40-character Git commit SHA" >&2
+            exit 1
+          fi
+
+      - name: Check out FolioAware source
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ inputs.source_repository }}
+          ref: ${{ inputs.source_commit }}
+          path: engine
+          persist-credentials: false
+
+      - name: Authenticate with short-lived Google credentials
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ inputs.project_id }}
+          workload_identity_provider: ${{ inputs.workload_identity_provider }}
+          service_account: ${{ inputs.deploy_service_account }}
+
+      - name: Install Google Cloud CLI
+        uses: google-github-actions/setup-gcloud@aa5489c8933f4cc7a4f7d45035b3b1440c9c10db # v3
+        with:
+          version: 577.0.0
+          project_id: ${{ inputs.project_id }}
+
+      - name: Build and push immutable release image
+        env:
+          PROJECT_ID: ${{ inputs.project_id }}
+          REGION: ${{ inputs.region }}
+          REPOSITORY: ${{ inputs.artifact_repository }}
+          SOURCE_COMMIT: ${{ inputs.source_commit }}
+        run: |
+          registry="${REGION}-docker.pkg.dev"
+          image="${registry}/${PROJECT_ID}/${REPOSITORY}/api:${SOURCE_COMMIT}-${GITHUB_RUN_ID}-${GITHUB_RUN_ATTEMPT}"
+          gcloud auth configure-docker "$registry" --quiet
+          docker build --tag "$image" engine
+          docker push "$image"
+          echo "IMAGE_URI=$image" >> "$GITHUB_ENV"
+
+      - name: Update only the Cloud Run image
+        env:
+          PROJECT_ID: ${{ inputs.project_id }}
+          REGION: ${{ inputs.region }}
+          SERVICE_NAME: ${{ inputs.service_name }}
+        run: |
+          gcloud run services update "$SERVICE_NAME" \
+            --image "$IMAGE_URI" \
+            --project "$PROJECT_ID" \
+            --region "$REGION" \
+            --quiet
+
+      - name: Verify public health endpoint
+        env:
+          PROJECT_ID: ${{ inputs.project_id }}
+          REGION: ${{ inputs.region }}
+          SERVICE_NAME: ${{ inputs.service_name }}
+        run: |
+          service_url="$(gcloud run services describe "$SERVICE_NAME" \
+            --project "$PROJECT_ID" \
+            --region "$REGION" \
+            --format='value(status.url)')"
+          curl --fail --retry 5 --retry-all-errors --retry-delay 2 \
+            "${service_url}/healthz"
