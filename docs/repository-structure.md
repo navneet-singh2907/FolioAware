@@ -79,7 +79,7 @@ folio-aware/
 ├── .env.example                            # initial: names, no credentials
 ├── .gitignore                              # initial
 ├── Dockerfile                              # initial
-├── LICENSE                                 # before public release
+├── LICENSE                                 # Apache License 2.0
 ├── README.md                               # current
 ├── pyproject.toml                          # initial: package and tool config
 └── uv.lock                                 # initial: reproducible dependencies
@@ -187,4 +187,3 @@ The MVP does not create `apps/`, `packages/`, `widget/`, `react/`, or a separate
 insight-job project. Those boundaries would add multiple manifests, releases,
 and CI paths before independent deployment or ownership exists. A future ADR
 must justify the split using an actual packaging, runtime, or team boundary.
-
