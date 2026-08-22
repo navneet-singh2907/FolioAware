@@ -19,5 +19,7 @@ Security risks and required controls are documented in
 [`docs/threat-model.md`](docs/threat-model.md), while claim admission,
 sufficiency, citation, and abstention rules are defined in
 [`docs/evidence-policy.md`](docs/evidence-policy.md).
+The scope, sequence, tests, and acceptance criteria for the first local working
+slice are defined in [`docs/mvp-plan.md`](docs/mvp-plan.md).
 
 No cloud resources are provisioned by this repository at this stage.
