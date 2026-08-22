@@ -11,5 +11,9 @@ The product definition is documented in
 [`docs/problem-statement.md`](docs/problem-statement.md). The proposed system
 boundaries and architecture decisions are indexed in
 [`docs/architecture.md`](docs/architecture.md).
+The planned MVP layout and dependency rules are documented in
+[`docs/repository-structure.md`](docs/repository-structure.md).
+The proposed HTTP, persistence, model, and port boundaries are documented in
+[`docs/api-and-data-contracts.md`](docs/api-and-data-contracts.md).
 
 No cloud resources are provisioned by this repository at this stage.
