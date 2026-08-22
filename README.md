@@ -15,5 +15,9 @@ The planned MVP layout and dependency rules are documented in
 [`docs/repository-structure.md`](docs/repository-structure.md).
 The proposed HTTP, persistence, model, and port boundaries are documented in
 [`docs/api-and-data-contracts.md`](docs/api-and-data-contracts.md).
+Security risks and required controls are documented in
+[`docs/threat-model.md`](docs/threat-model.md), while claim admission,
+sufficiency, citation, and abstention rules are defined in
+[`docs/evidence-policy.md`](docs/evidence-policy.md).
 
 No cloud resources are provisioned by this repository at this stage.
