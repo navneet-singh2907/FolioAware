@@ -4,7 +4,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
-from folioaware.api.dependencies import ApplicationContainer, build_local_container
+from folioaware.api.dependencies import ApplicationContainer, build_container
 from folioaware.api.schemas import AskRequest, AskResponse, ProblemResponse
 from folioaware.domain.exceptions import (
     InvalidModelOutputError,
@@ -30,7 +30,7 @@ def _problem(*, request_id: str, status: int, code: str, title: str) -> JSONResp
 
 def create_app(container: ApplicationContainer | None = None) -> FastAPI:
     """Create an application using explicit dependencies and no network I/O."""
-    dependencies = container or build_local_container()
+    dependencies = container or build_container()
     application = FastAPI(
         title="FolioAware",
         summary="A portfolio agent that stays current.",

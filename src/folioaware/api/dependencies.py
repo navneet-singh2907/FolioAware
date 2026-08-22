@@ -3,6 +3,17 @@
 from dataclasses import dataclass
 from pathlib import Path
 
+from google import genai
+from google.cloud import firestore_v1
+
+from folioaware.adapters.google import (
+    FirestoreKnowledgeRepository,
+    FirestoreQuestionRepository,
+    VertexEmbeddingProvider,
+    VertexGenerationProvider,
+    create_firestore_client,
+    create_vertex_client,
+)
 from folioaware.adapters.local import (
     DeterministicEmbeddingProvider,
     DeterministicGenerationProvider,
@@ -24,17 +35,29 @@ class ApplicationContainer:
     answer_question: AnswerQuestion
     clock: Clock
     identifiers: IdentifierProvider
+
+
+@dataclass(frozen=True, slots=True)
+class LocalApplicationContainer(ApplicationContainer):
     knowledge: InMemoryKnowledgeRepository
     questions: InMemoryQuestionRepository
     embeddings: DeterministicEmbeddingProvider
     generation: DeterministicGenerationProvider
 
 
+@dataclass(frozen=True, slots=True)
+class GoogleApplicationContainer(ApplicationContainer):
+    knowledge: FirestoreKnowledgeRepository
+    questions: FirestoreQuestionRepository
+    embeddings: VertexEmbeddingProvider
+    generation: VertexGenerationProvider
+
+
 def build_local_container(
     settings: Settings | None = None,
     *,
     content_root: Path | None = None,
-) -> ApplicationContainer:
+) -> LocalApplicationContainer:
     resolved_settings = settings or Settings()
     clock = SystemClock()
     identifiers = UUID4Provider()
@@ -63,7 +86,7 @@ def build_local_container(
         top_k=resolved_settings.retrieval_top_k,
         retention_days=resolved_settings.telemetry_retention_days,
     )
-    return ApplicationContainer(
+    return LocalApplicationContainer(
         answer_question=answer_question,
         clock=clock,
         identifiers=identifiers,
@@ -72,3 +95,74 @@ def build_local_container(
         embeddings=embeddings,
         generation=generation,
     )
+
+
+def build_google_container(
+    settings: Settings,
+    *,
+    vertex_client: genai.Client | None = None,
+    firestore_client: firestore_v1.Client | None = None,
+) -> GoogleApplicationContainer:
+    """Compose Google adapters; client injection keeps tests credential-free."""
+    if settings.backend != "google":
+        raise ValueError("Google composition requires backend=google")
+    if settings.google_cloud_project is None or settings.generation_model is None:
+        raise ValueError("validated Google configuration is incomplete")
+
+    resolved_vertex = vertex_client or create_vertex_client(
+        project=settings.google_cloud_project,
+        location=settings.google_cloud_location,
+        timeout_seconds=settings.google_request_timeout_seconds,
+    )
+    resolved_firestore = firestore_client or create_firestore_client(
+        project=settings.google_cloud_project,
+        database=settings.firestore_database,
+    )
+    clock = SystemClock()
+    identifiers = UUID4Provider()
+    embeddings = VertexEmbeddingProvider(
+        client=resolved_vertex,
+        model=settings.embedding_model,
+        dimensions=settings.embedding_dimensions,
+    )
+    generation = VertexGenerationProvider(
+        client=resolved_vertex,
+        model=settings.generation_model,
+        max_output_tokens=settings.generation_max_output_tokens,
+    )
+    knowledge = FirestoreKnowledgeRepository(
+        client=resolved_firestore,
+        timeout_seconds=settings.google_request_timeout_seconds,
+    )
+    questions = FirestoreQuestionRepository(
+        client=resolved_firestore,
+        timeout_seconds=settings.google_request_timeout_seconds,
+    )
+    answer_question = AnswerQuestion(
+        embeddings=embeddings,
+        generation=generation,
+        knowledge=knowledge,
+        questions=questions,
+        sanitizer=TelemetrySanitizer(settings.session_hash_secret.get_secret_value()),
+        clock=clock,
+        identifiers=identifiers,
+        distance_threshold=settings.retrieval_distance_threshold,
+        top_k=settings.retrieval_top_k,
+        retention_days=settings.telemetry_retention_days,
+    )
+    return GoogleApplicationContainer(
+        answer_question=answer_question,
+        clock=clock,
+        identifiers=identifiers,
+        knowledge=knowledge,
+        questions=questions,
+        embeddings=embeddings,
+        generation=generation,
+    )
+
+
+def build_container(settings: Settings | None = None) -> ApplicationContainer:
+    resolved = settings or Settings()
+    if resolved.backend == "google":
+        return build_google_container(resolved)
+    return build_local_container(resolved)
