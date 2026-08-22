@@ -1,0 +1,13 @@
+schemaVersion: 1
+sourceId: project-meadow
+sourceType: project
+title: Project Meadow
+citationUrl: /projects/meadow
+content: >-
+  Project Meadow is a synthetic accessible static website for a community
+  garden. It provides keyboard-friendly navigation and clear event information.
+tags:
+  - accessibility
+  - static-site
+visibility: public
+

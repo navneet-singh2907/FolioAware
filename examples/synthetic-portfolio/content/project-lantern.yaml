@@ -1,0 +1,14 @@
+schemaVersion: 1
+sourceId: project-lantern
+sourceType: project
+title: Project Lantern
+citationUrl: /projects/lantern
+content: >-
+  Project Lantern is a synthetic data-quality monitoring tool built with Python.
+  It stores validation results in PostgreSQL and reports failed checks.
+tags:
+  - python
+  - postgresql
+  - data-quality
+visibility: public
+
