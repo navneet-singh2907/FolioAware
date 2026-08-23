@@ -75,3 +75,31 @@ jobs:
           done
           docker logs folio-aware-smoke
           exit 1
+
+  infrastructure:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          persist-credentials: false
+
+      - name: Install Terraform
+        uses: hashicorp/setup-terraform@dfe3c3f87815947d99a8997f908cb6525fc44e9e # v4.0.1
+        with:
+          terraform_version: 1.15.9
+          terraform_wrapper: false
+
+      - name: Check Terraform formatting
+        run: terraform -chdir=deploy/terraform fmt -check -recursive
+
+      - name: Initialize providers without a backend
+        run: terraform -chdir=deploy/terraform init -backend=false -input=false -lockfile=readonly
+
+      - name: Validate Terraform configuration
+        run: terraform -chdir=deploy/terraform validate
+
+      - name: Run offline infrastructure tests
+        run: terraform -chdir=deploy/terraform test

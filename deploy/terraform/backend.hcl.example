@@ -1,0 +1,4 @@
+# The state bucket is a separately bootstrapped prerequisite. Do not commit a
+# real backend file, credentials, or state.
+bucket = "example-protected-terraform-state-bucket"
+prefix = "folio-aware/production"

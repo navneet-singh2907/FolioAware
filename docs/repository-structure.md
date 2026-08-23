@@ -21,18 +21,23 @@ not be created until their feature is implemented.
 folio-aware/
 ├── .github/
 │   └── workflows/
-│       └── ci.yml                         # initial: local-quality checks in CI
+│       ├── ci.yml                         # current: quality and offline infra checks
+│       └── deploy-reusable.yml            # current: keyless image release
 ├── deploy/
-│   └── cloud-run/                         # later: non-applied deployment config
+│   └── terraform/                         # current: non-applied Google foundation
+│       ├── tests/                         # mocked provider policy tests
+│       ├── backend.hcl.example            # synthetic remote-state shape
+│       └── terraform.tfvars.example       # synthetic adopter inputs
 ├── docs/
 │   ├── adr/                               # current: architecture decisions
 │   ├── architecture.md                    # current: system boundaries and flow
 │   ├── problem-statement.md               # current: scope and success criteria
 │   ├── repository-structure.md            # current: this document
-│   ├── api-and-data-contracts.md           # next step
-│   ├── evidence-policy.md                  # later planning step
-│   ├── threat-model.md                     # later planning step
-│   └── mvp-plan.md                         # later planning step
+│   ├── api-and-data-contracts.md           # current
+│   ├── evidence-policy.md                  # current
+│   ├── infrastructure-permissions.md       # current: cloud trust boundaries
+│   ├── threat-model.md                     # current
+│   └── mvp-plan.md                         # current
 ├── evals/
 │   └── fixtures/                           # initial: grounded/refusal cases
 ├── examples/
@@ -64,8 +69,8 @@ folio-aware/
 │       │   ├── knowledge_repository.py
 │       │   └── question_repository.py
 │       ├── adapters/
-│       │   ├── memory/                     # initial: deterministic tests/demo
-│       │   └── google/                     # next: Firestore and Vertex AI
+│       │   ├── local/                      # current: deterministic tests/demo
+│       │   └── google/                     # current: Firestore and Vertex AI
 │       ├── ingestion/                      # initial: parse, validate, chunk, hash
 │       ├── security/                       # initial: redaction and input limits
 │       ├── cli/                            # initial: sync command entry point
@@ -87,6 +92,10 @@ folio-aware/
 
 The tree is a destination, not an instruction to create placeholders. A
 directory is added only with the first real file that has a clear owner.
+
+Deployment-specific IDs, portfolio content, analytics, real `.tfvars`, state,
+and backend configuration belong to the adopter deployment, not this reusable
+open-source repository.
 
 ## Boundary rules
 
