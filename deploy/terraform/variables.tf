@@ -148,7 +148,7 @@ variable "session_hash_secret_version" {
 }
 
 variable "sync_workflow_ref" {
-  description = "Exact future GitHub OIDC job_workflow_ref allowed to impersonate the sync identity."
+  description = "Exact GitHub OIDC job_workflow_ref allowed to impersonate the sync identity."
   type        = string
 
   validation {

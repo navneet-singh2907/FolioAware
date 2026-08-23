@@ -29,6 +29,6 @@ output "sync_service_account" {
 }
 
 output "sync_workload_identity_provider" {
-  description = "Reserved provider name for the future sync workflow."
+  description = "Full provider name supplied to the reusable sync workflow."
   value       = google_iam_workload_identity_pool_provider.sync_github.name
 }

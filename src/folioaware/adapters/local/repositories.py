@@ -17,6 +17,8 @@ from folioaware.domain.knowledge import (
     IndexStatus,
     IndexVersion,
     KnowledgeChunk,
+    SyncResult,
+    SyncStatus,
     Visibility,
 )
 from folioaware.domain.telemetry import TopicInsight, VisitorQuestion
@@ -127,6 +129,19 @@ class InMemoryKnowledgeRepository:
     def get_version(self, index_version: str) -> IndexVersion | None:
         """Inspection helper for deterministic tests, not an application port."""
         return self._versions.get(index_version)
+
+
+class InMemorySyncHistoryRepository:
+    def __init__(self) -> None:
+        self.records: dict[str, SyncResult] = {}
+
+    def save(self, sync_run: SyncResult) -> None:
+        if (
+            sync_run.status is SyncStatus.RUNNING
+            and sync_run.sync_run_id in self.records
+        ):
+            raise SyncValidationError("sync run already exists")
+        self.records[sync_run.sync_run_id] = sync_run
 
 
 class InMemoryQuestionRepository:

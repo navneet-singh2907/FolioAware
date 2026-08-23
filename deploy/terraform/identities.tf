@@ -20,7 +20,7 @@ resource "google_service_account" "sync" {
   project      = var.project_id
   account_id   = "folio-aware-sync"
   display_name = "FolioAware knowledge synchronization"
-  description  = "Reserved WIF target for the future production Google sync entry point."
+  description  = "WIF target for approved-content synchronization into Firestore."
 
   depends_on = [google_project_service.required["iam.googleapis.com"]]
 }

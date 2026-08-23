@@ -47,8 +47,9 @@ uv run folioaware sync \
 uv run uvicorn folioaware.api.main:app --reload
 ```
 
-The sync command validates the approved fixture and prints a JSON sync result.
-Its repository is deliberately in memory, so each CLI process starts clean.
+The local-default sync command validates the approved fixture and prints a JSON
+sync result. Its repository is deliberately in memory, so each CLI process
+starts clean.
 Embedding reuse and rollback behavior are demonstrated by the automated use-case
 tests rather than persisted between CLI runs.
 
@@ -127,8 +128,9 @@ Workload Identity Federation. No service-account JSON keys are used.
 Infrastructure validation is offline and automatic; a real plan or apply is
 never automatic and requires explicit approval. The reusable deploy workflow
 can only build an immutable source commit and update an existing service's
-image. A production cloud-sync workflow is intentionally deferred until the
-current local-only sync composition has a Google-backed entry point.
+image. A separate reusable sync workflow runs only the approved-content loader,
+Vertex embeddings, Firestore copy-on-write activation, and bounded sync history
+through its own WIF identity.
 
 See [ADR-0010](docs/adr/0010-terraform-foundation-and-wif.md) and the
 [permission map](docs/infrastructure-permissions.md) for the trust boundaries,
@@ -157,6 +159,50 @@ Production rejects the documented development token. Provide the real token at
 runtime from a secret store. See [ADR-0009](docs/adr/0009-deterministic-insight-aggregation.md)
 for the security boundary and migration tradeoffs.
 
+## Production knowledge synchronization
+
+`folioaware sync --backend google` uses Application Default Credentials and a
+sync-only composition root. It requires the Google project, Vertex location,
+Firestore database, embedding model/dimensions, and request timeout documented
+in `.env.example`. It does not construct generation, telemetry, analytics, or
+runtime-secret dependencies.
+
+An adopting portfolio repository can call the reusable workflow after approved
+content reaches its protected `main` branch:
+
+```yaml
+name: Sync FolioAware knowledge
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "portfolio-content/**"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sync:
+    uses: your-org/folio-aware/.github/workflows/sync-reusable.yml@0123456789abcdef0123456789abcdef01234567
+    with:
+      project_id: example-folio-aware-project
+      workload_identity_provider: projects/123456789012/locations/global/workloadIdentityPools/folio-aware-sync/providers/github
+      sync_service_account: folio-aware-sync@example-folio-aware-project.iam.gserviceaccount.com
+      content_root: portfolio-content
+      engine_repository: your-org/folio-aware
+      engine_commit: 0123456789abcdef0123456789abcdef01234567
+```
+
+Use the same reviewed FolioAware commit in `uses`, `engine_commit`, and the
+Terraform `sync_workflow_ref`. The example values are synthetic. Merely adding
+this open-source workflow creates no cloud resource and makes no paid call; an
+adopter must first apply approved infrastructure and invoke the caller.
+
+See [ADR-0011](docs/adr/0011-production-google-knowledge-sync.md) for why sync
+has a separate composition root and how terminal history failures are handled.
+
 ## Project documentation
 
 - [Problem statement](docs/problem-statement.md)
@@ -168,6 +214,7 @@ for the security boundary and migration tradeoffs.
 - [MVP vertical-slice plan](docs/mvp-plan.md)
 - [Terraform deployment foundation](deploy/terraform/README.md)
 - [Infrastructure permission map](docs/infrastructure-permissions.md)
+- [Production Google synchronization decision](docs/adr/0011-production-google-knowledge-sync.md)
 - [Portable approved-source schema](schemas/knowledge-source.schema.json)
 
 No real portfolio content or visitor analytics are included. No cloud resource,

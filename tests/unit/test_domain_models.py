@@ -10,6 +10,8 @@ from folioaware.domain.knowledge import (
     Embedding,
     EmbeddingTaskType,
     SourceType,
+    SyncResult,
+    SyncStatus,
 )
 from folioaware.domain.telemetry import VisitorQuestion
 
@@ -68,4 +70,46 @@ def test_telemetry_expiry_must_follow_creation() -> None:
             knowledge_version="version-1",
             created_at=now,
             expires_at=now - timedelta(seconds=1),
+        )
+
+
+def test_sync_run_lifecycle_rejects_inconsistent_terminal_fields() -> None:
+    now = datetime(2026, 8, 23, tzinfo=UTC)
+    common = {
+        "sync_run_id": "run-1",
+        "candidate_index_version": "version-1",
+        "git_commit": "abcdef1",
+        "sources_seen": 1,
+        "chunks_added": 0,
+        "chunks_reused": 0,
+        "chunks_removed": 0,
+        "started_at": now,
+    }
+
+    with pytest.raises(ValidationError, match="running sync"):
+        SyncResult.model_validate(
+            {
+                **common,
+                "status": SyncStatus.RUNNING,
+                "completed_at": now,
+            }
+        )
+    with pytest.raises(ValidationError, match="error code"):
+        SyncResult.model_validate(
+            {
+                **common,
+                "status": SyncStatus.FAILED,
+                "completed_at": now,
+            }
+        )
+    with pytest.raises(ValidationError, match="completion time"):
+        SyncResult.model_validate({**common, "status": SyncStatus.SUCCEEDED})
+    with pytest.raises(ValidationError, match="cannot have an error"):
+        SyncResult.model_validate(
+            {
+                **common,
+                "status": SyncStatus.SUCCEEDED,
+                "completed_at": now,
+                "error_code": "IMPOSSIBLE",
+            }
         )

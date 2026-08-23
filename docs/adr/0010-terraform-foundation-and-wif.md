@@ -32,7 +32,7 @@ Use distinct identities:
 | --- | --- |
 | Runtime | Call Vertex AI, access Firestore data, read two runtime secrets |
 | Deploy | Push to one Artifact Registry repository, update Cloud Run, attach only the runtime identity |
-| Sync | Call Vertex AI and access Firestore data; reserved for the later production sync entry point |
+| Sync | Call Vertex AI and access Firestore data for the production sync entry point |
 
 Use separate WIF pools for deploy and sync. Each provider requires immutable
 GitHub repository and owner numeric IDs, the exact branch ref, and the exact
@@ -99,3 +99,9 @@ trust contract are defined now; execution follows the Google sync composition.
 - multiple environments require separate root states;
 - an organization policy blocks public Cloud Run invocation; or
 - observed load justifies different scaling, concurrency, or billing settings.
+
+## Implementation update
+
+ADR-0011 implements the production sync composition and reusable workflow. The
+separate sync identity and workflow-scoped WIF boundary defined here remain
+unchanged.

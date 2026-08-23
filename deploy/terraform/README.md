@@ -17,7 +17,7 @@ The configuration owns:
 - one immutable Docker repository;
 - one Firestore Native database and the required indexes;
 - empty Secret Manager containers, never secret values;
-- separate runtime, deploy, and future sync service accounts;
+- separate runtime, deploy, and sync service accounts;
 - workflow-scoped GitHub OIDC federation; and
 - an optional Cloud Run service with zero-to-two scaling.
 
@@ -92,10 +92,11 @@ a protected GitHub environment when human deployment approval is required.
 The workflow obtains short-lived credentials, pushes a uniquely tagged image,
 and updates only the Cloud Run image. It cannot run `terraform apply`.
 
-There is deliberately no sync workflow yet. The current CLI composes local
-adapters, so publishing a cloud sync workflow would falsely imply production
-readiness. Terraform reserves its identity and trust boundary for the later
-Google synchronization vertical slice.
+The reusable knowledge workflow is `.github/workflows/sync-reusable.yml`. Its
+caller must use the same exact workflow commit configured in
+`sync_workflow_ref`; otherwise the WIF provider rejects authentication. It can
+write knowledge and sync history through the dedicated sync identity but
+cannot deploy Cloud Run, read runtime secrets, or generate visitor answers.
 
 ## Existing resources and imports
 

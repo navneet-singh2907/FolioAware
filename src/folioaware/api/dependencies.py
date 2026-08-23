@@ -22,6 +22,7 @@ from folioaware.adapters.local import (
     InMemoryInsightRepository,
     InMemoryKnowledgeRepository,
     InMemoryQuestionRepository,
+    InMemorySyncHistoryRepository,
     SystemClock,
     UUID4Provider,
 )
@@ -73,6 +74,7 @@ def build_local_container(
     embeddings = DeterministicEmbeddingProvider()
     generation = DeterministicGenerationProvider()
     knowledge = InMemoryKnowledgeRepository()
+    sync_history = InMemorySyncHistoryRepository()
     questions = InMemoryQuestionRepository()
     insights = InMemoryInsightRepository()
     classifier = DeterministicQuestionClassifier(
@@ -82,6 +84,7 @@ def build_local_container(
     SyncKnowledge(
         embeddings=embeddings,
         repository=knowledge,
+        history=sync_history,
         clock=clock,
         identifiers=identifiers,
     ).execute(sources=sources, git_commit="0000000")

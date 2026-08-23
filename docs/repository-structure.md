@@ -22,7 +22,8 @@ folio-aware/
 ├── .github/
 │   └── workflows/
 │       ├── ci.yml                         # current: quality and offline infra checks
-│       └── deploy-reusable.yml            # current: keyless image release
+│       ├── deploy-reusable.yml            # current: keyless image release
+│       └── sync-reusable.yml              # current: keyless approved-content sync
 ├── deploy/
 │   └── terraform/                         # current: non-applied Google foundation
 │       ├── tests/                         # mocked provider policy tests

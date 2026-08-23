@@ -27,6 +27,8 @@ from folioaware.domain.knowledge import (
     IndexStatus,
     IndexVersion,
     KnowledgeChunk,
+    SyncResult,
+    SyncStatus,
 )
 from folioaware.domain.telemetry import TopicInsight, VisitorQuestion
 
@@ -34,6 +36,7 @@ KNOWLEDGE_CHUNKS = "knowledge_chunks"
 INDEX_VERSIONS = "index_versions"
 VISITOR_QUESTIONS = "visitor_questions"
 TOPIC_INSIGHTS = "topic_insights"
+SYNC_RUNS = "sync_runs"
 SYSTEM = "system"
 KNOWLEDGE_POINTER = "knowledge"
 VECTOR_DISTANCE_FIELD = "vector_distance"
@@ -67,6 +70,10 @@ def _question_document_id(question_id: str) -> str:
 
 def _insight_document_id(insight_id: str) -> str:
     return _safe_document_id("topic-insight", insight_id)
+
+
+def _sync_run_document_id(sync_run_id: str) -> str:
+    return _safe_document_id("sync-run", sync_run_id)
 
 
 def _index_to_document(version: IndexVersion) -> dict[str, Any]:
@@ -345,6 +352,25 @@ class FirestoreKnowledgeRepository:
             )
         except Exception as error:
             raise SyncValidationError("failed candidate could not be marked") from error
+
+
+class FirestoreSyncHistoryRepository:
+    def __init__(self, *, client: firestore_v1.Client, timeout_seconds: int) -> None:
+        self._client = client
+        self._timeout_seconds = timeout_seconds
+
+    def save(self, sync_run: SyncResult) -> None:
+        document = sync_run.model_dump(mode="python", by_alias=False)
+        try:
+            reference = self._client.collection(SYNC_RUNS).document(
+                _sync_run_document_id(sync_run.sync_run_id)
+            )
+            if sync_run.status is SyncStatus.RUNNING:
+                reference.create(document, timeout=self._timeout_seconds)
+            else:
+                reference.set(document, timeout=self._timeout_seconds)
+        except Exception as error:
+            raise SyncValidationError("sync history write failed") from error
 
 
 class FirestoreQuestionRepository:

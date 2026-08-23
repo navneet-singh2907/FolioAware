@@ -1,0 +1,153 @@
+name: Reusable knowledge sync
+
+on:
+  workflow_call:
+    inputs:
+      project_id:
+        description: Google Cloud project containing this single deployment
+        required: true
+        type: string
+      workload_identity_provider:
+        description: Full sync Workload Identity Provider resource name
+        required: true
+        type: string
+      sync_service_account:
+        description: Sync service-account email
+        required: true
+        type: string
+      content_root:
+        description: Repository-relative directory containing folioaware.yaml
+        required: true
+        type: string
+      engine_repository:
+        description: FolioAware engine repository in owner/name form
+        required: true
+        type: string
+      engine_commit:
+        description: Exact 40-character FolioAware engine commit SHA
+        required: true
+        type: string
+      google_cloud_location:
+        description: Vertex AI location
+        required: false
+        default: global
+        type: string
+      firestore_database:
+        description: Firestore database ID
+        required: false
+        default: (default)
+        type: string
+      embedding_model:
+        description: Vertex embedding model
+        required: false
+        default: gemini-embedding-001
+        type: string
+      embedding_dimensions:
+        description: Embedding and vector-index dimensions
+        required: false
+        default: 768
+        type: number
+      request_timeout_seconds:
+        description: Per-request Google SDK timeout
+        required: false
+        default: 15
+        type: number
+      environment:
+        description: Optional protected GitHub deployment environment
+        required: false
+        default: production
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: ${{ inputs.environment }}
+    concurrency:
+      group: knowledge-sync-${{ inputs.project_id }}
+      cancel-in-progress: false
+
+    steps:
+      - name: Validate immutable and repository-relative inputs
+        env:
+          CONTENT_ROOT: ${{ inputs.content_root }}
+          ENGINE_COMMIT: ${{ inputs.engine_commit }}
+          ENGINE_REPOSITORY: ${{ inputs.engine_repository }}
+        run: |
+          if [[ ! "$ENGINE_COMMIT" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "engine_commit must be a lowercase 40-character Git commit SHA" >&2
+            exit 1
+          fi
+          if [[ ! "$ENGINE_REPOSITORY" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+            echo "engine_repository must use owner/name form" >&2
+            exit 1
+          fi
+          if [[ -z "$CONTENT_ROOT" || "$CONTENT_ROOT" == /* || "$CONTENT_ROOT" == *\\* ]]; then
+            echo "content_root must be a repository-relative POSIX path" >&2
+            exit 1
+          fi
+          if [[ "/$CONTENT_ROOT/" == *"/../"* || ( "$CONTENT_ROOT" != "." && "/$CONTENT_ROOT/" == *"/./"* ) ]]; then
+            echo "content_root cannot contain dot traversal segments" >&2
+            exit 1
+          fi
+
+      - name: Check out approved portfolio revision
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ github.sha }}
+          path: portfolio
+          persist-credentials: false
+
+      - name: Check out pinned FolioAware engine
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          repository: ${{ inputs.engine_repository }}
+          ref: ${{ inputs.engine_commit }}
+          path: engine
+          persist-credentials: false
+
+      - name: Authenticate with short-lived Google credentials
+        uses: google-github-actions/auth@7c6bc770dae815cd3e89ee6cdf493a5fab2cc093 # v3
+        with:
+          project_id: ${{ inputs.project_id }}
+          workload_identity_provider: ${{ inputs.workload_identity_provider }}
+          service_account: ${{ inputs.sync_service_account }}
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          version: "0.11.24"
+          enable-cache: true
+
+      - name: Install Python
+        run: uv python install 3.12
+
+      - name: Install locked FolioAware runtime
+        run: uv sync --project engine --locked --no-dev
+
+      - name: Synchronize approved content
+        env:
+          CONTENT_ROOT: ${{ inputs.content_root }}
+          FOLIOAWARE_BACKEND: google
+          FOLIOAWARE_EMBEDDING_DIMENSIONS: ${{ inputs.embedding_dimensions }}
+          FOLIOAWARE_EMBEDDING_MODEL: ${{ inputs.embedding_model }}
+          FOLIOAWARE_FIRESTORE_DATABASE: ${{ inputs.firestore_database }}
+          FOLIOAWARE_GOOGLE_CLOUD_LOCATION: ${{ inputs.google_cloud_location }}
+          FOLIOAWARE_GOOGLE_CLOUD_PROJECT: ${{ inputs.project_id }}
+          FOLIOAWARE_GOOGLE_REQUEST_TIMEOUT_SECONDS: ${{ inputs.request_timeout_seconds }}
+          GIT_COMMIT: ${{ github.sha }}
+        run: |
+          portfolio_root="$(realpath "${GITHUB_WORKSPACE}/portfolio")"
+          content_path="$(realpath "${portfolio_root}/${CONTENT_ROOT}")"
+          if [[ "${content_path}/" != "${portfolio_root}/"* ]]; then
+            echo "content_root resolved outside the portfolio checkout" >&2
+            exit 1
+          fi
+          uv run --project engine --no-sync folioaware sync \
+            --backend google \
+            --content-root "$content_path" \
+            --git-commit "$GIT_COMMIT"

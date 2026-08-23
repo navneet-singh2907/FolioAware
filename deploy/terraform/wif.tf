@@ -50,7 +50,7 @@ resource "google_iam_workload_identity_pool_provider" "sync_github" {
   workload_identity_pool_id          = google_iam_workload_identity_pool.sync.workload_identity_pool_id
   workload_identity_pool_provider_id = "github"
   display_name                       = "GitHub sync OIDC"
-  description                        = "Exact repository IDs, ref, and future reusable sync workflow only."
+  description                        = "Exact repository IDs, ref, and reusable sync workflow only."
 
   attribute_mapping   = local.wif_attribute_mapping
   attribute_condition = local.sync_wif_condition

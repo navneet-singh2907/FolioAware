@@ -1,7 +1,7 @@
 import pytest
 from pydantic import SecretStr, ValidationError
 
-from folioaware.config import Settings
+from folioaware.config import Settings, SyncSettings
 
 
 def test_production_rejects_development_session_secret() -> None:
@@ -42,3 +42,17 @@ def test_google_backend_accepts_explicit_model_configuration() -> None:
     )
 
     assert settings.embedding_dimensions == 768
+
+
+def test_google_sync_requires_only_project_and_embedding_configuration() -> None:
+    settings = SyncSettings(
+        backend="google",
+        google_cloud_project="synthetic-project",
+    )
+
+    assert settings.embedding_model == "gemini-embedding-001"
+
+
+def test_google_sync_rejects_missing_project() -> None:
+    with pytest.raises(ValidationError, match="Google sync requires"):
+        SyncSettings(backend="google")

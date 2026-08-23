@@ -60,8 +60,9 @@ service-account key role.
 - `roles/datastore.user` on the project
 
 It receives no Cloud Run administration, Artifact Registry write, secret
-access, or runtime service-account impersonation role. It remains unused until
-the Google synchronization entry point exists.
+access, or runtime service-account impersonation role. The reusable knowledge
+workflow uses it only for Vertex embeddings, Firestore knowledge writes, and
+bounded sync-history updates.
 
 ## WIF admission
 

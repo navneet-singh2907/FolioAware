@@ -11,6 +11,7 @@ from google.cloud.firestore_v1.vector import Vector
 from folioaware.adapters.google.firestore import (
     INDEX_VERSIONS,
     KNOWLEDGE_CHUNKS,
+    SYNC_RUNS,
     SYSTEM,
     TOPIC_INSIGHTS,
     VECTOR_DISTANCE_FIELD,
@@ -18,6 +19,7 @@ from folioaware.adapters.google.firestore import (
     FirestoreInsightRepository,
     FirestoreKnowledgeRepository,
     FirestoreQuestionRepository,
+    FirestoreSyncHistoryRepository,
     create_firestore_client,
 )
 from folioaware.domain.answers import AnswerStatus
@@ -33,6 +35,8 @@ from folioaware.domain.knowledge import (
     IndexStatus,
     IndexVersion,
     KnowledgeChunk,
+    SyncResult,
+    SyncStatus,
 )
 from folioaware.domain.telemetry import SuggestedAction, TopicInsight, VisitorQuestion
 
@@ -476,6 +480,96 @@ def test_firestore_marks_failed_candidate_without_exposing_vendor_error() -> Non
     with pytest.raises(SyncValidationError) as error:
         repository.mark_candidate_failed("version-2")
     assert "vendor detail" not in str(error.value)
+
+
+def test_firestore_sync_history_contains_only_the_bounded_audit_contract() -> None:
+    client = MagicMock()
+    reference = MagicMock()
+    collection = MagicMock()
+    collection.document.return_value = reference
+    client.collection.return_value = collection
+    repository = FirestoreSyncHistoryRepository(
+        client=as_client(client), timeout_seconds=7
+    )
+    sync_run = SyncResult(
+        sync_run_id="run-1",
+        candidate_index_version="version-1",
+        git_commit="abcdef1",
+        status=SyncStatus.SUCCEEDED,
+        sources_seen=3,
+        chunks_added=2,
+        chunks_reused=1,
+        chunks_removed=0,
+        started_at=NOW,
+        completed_at=NOW + timedelta(seconds=2),
+    )
+
+    repository.save(sync_run)
+
+    client.collection.assert_called_once_with(SYNC_RUNS)
+    assert collection.document.call_args.args[0] != "run-1"
+    document = reference.set.call_args.args[0]
+    assert set(document) == set(sync_run.model_dump(mode="python"))
+    assert "content" not in document
+    assert "error" not in document
+    reference.set.assert_called_once_with(document, timeout=7)
+
+
+def test_firestore_sync_history_sanitizes_vendor_failure() -> None:
+    client = MagicMock()
+    reference = MagicMock()
+    reference.create.side_effect = RuntimeError("sensitive vendor detail")
+    collection = MagicMock()
+    collection.document.return_value = reference
+    client.collection.return_value = collection
+    repository = FirestoreSyncHistoryRepository(
+        client=as_client(client), timeout_seconds=7
+    )
+    sync_run = SyncResult(
+        sync_run_id="run-1",
+        candidate_index_version="version-1",
+        git_commit="abcdef1",
+        status=SyncStatus.RUNNING,
+        sources_seen=3,
+        chunks_added=0,
+        chunks_reused=0,
+        chunks_removed=0,
+        started_at=NOW,
+    )
+
+    with pytest.raises(SyncValidationError) as error:
+        repository.save(sync_run)
+
+    assert "sensitive vendor detail" not in str(error.value)
+
+
+def test_firestore_sync_history_creates_running_record_once() -> None:
+    client = MagicMock()
+    reference = MagicMock()
+    collection = MagicMock()
+    collection.document.return_value = reference
+    client.collection.return_value = collection
+    repository = FirestoreSyncHistoryRepository(
+        client=as_client(client), timeout_seconds=7
+    )
+    sync_run = SyncResult(
+        sync_run_id="run-1",
+        candidate_index_version="version-1",
+        git_commit="abcdef1",
+        status=SyncStatus.RUNNING,
+        sources_seen=3,
+        chunks_added=0,
+        chunks_reused=0,
+        chunks_removed=0,
+        started_at=NOW,
+    )
+
+    repository.save(sync_run)
+
+    reference.create.assert_called_once_with(
+        sync_run.model_dump(mode="python", by_alias=False), timeout=7
+    )
+    reference.set.assert_not_called()
 
 
 def test_firestore_question_document_contains_only_privacy_reduced_contract() -> None:
