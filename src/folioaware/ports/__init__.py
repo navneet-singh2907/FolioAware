@@ -5,5 +5,11 @@ from folioaware.ports.analytics import (
     QuestionClassifier,
     QuestionTelemetryReader,
 )
+from folioaware.ports.sync_history import SyncHistoryRepository
 
-__all__ = ["InsightRepository", "QuestionClassifier", "QuestionTelemetryReader"]
+__all__ = [
+    "InsightRepository",
+    "QuestionClassifier",
+    "QuestionTelemetryReader",
+    "SyncHistoryRepository",
+]

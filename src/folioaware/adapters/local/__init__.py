@@ -6,6 +6,7 @@ from folioaware.adapters.local.repositories import (
     InMemoryInsightRepository,
     InMemoryKnowledgeRepository,
     InMemoryQuestionRepository,
+    InMemorySyncHistoryRepository,
 )
 from folioaware.adapters.local.runtime import SystemClock, UUID4Provider
 
@@ -15,6 +16,7 @@ __all__ = [
     "InMemoryInsightRepository",
     "InMemoryKnowledgeRepository",
     "InMemoryQuestionRepository",
+    "InMemorySyncHistoryRepository",
     "SystemClock",
     "UUID4Provider",
 ]

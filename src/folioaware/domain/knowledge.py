@@ -167,5 +167,18 @@ class SyncResult(DomainModel):
     chunks_reused: int = Field(ge=0)
     chunks_removed: int = Field(ge=0)
     started_at: datetime
-    completed_at: datetime
+    completed_at: datetime | None = None
     error_code: str | None = Field(default=None, max_length=100)
+
+    @model_validator(mode="after")
+    def lifecycle_fields_match_status(self) -> SyncResult:
+        if self.status is SyncStatus.RUNNING:
+            if self.completed_at is not None or self.error_code is not None:
+                raise ValueError("running sync cannot be completed or have an error")
+        elif self.completed_at is None:
+            raise ValueError("terminal sync must have a completion time")
+        elif self.status is SyncStatus.SUCCEEDED and self.error_code is not None:
+            raise ValueError("successful sync cannot have an error code")
+        elif self.status is SyncStatus.FAILED and self.error_code is None:
+            raise ValueError("failed sync must have an error code")
+        return self

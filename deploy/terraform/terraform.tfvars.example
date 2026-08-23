@@ -8,7 +8,7 @@ generation_model           = "gemini-2.5-flash"
 # Pin the reusable workflow to the exact FolioAware commit used by the caller.
 deploy_workflow_ref = "example-org/folio-aware/.github/workflows/deploy-reusable.yml@0123456789abcdef0123456789abcdef01234567"
 
-# Reserved until the production Google sync entry point and workflow exist.
+# Pin the reusable sync workflow to the same reviewed FolioAware commit.
 sync_workflow_ref = "example-org/folio-aware/.github/workflows/sync-reusable.yml@0123456789abcdef0123456789abcdef01234567"
 
 # Safe bootstrap default: foundation only. Do not enable until an image digest

@@ -4,6 +4,7 @@ from folioaware.adapters.google.firestore import (
     FirestoreInsightRepository,
     FirestoreKnowledgeRepository,
     FirestoreQuestionRepository,
+    FirestoreSyncHistoryRepository,
     create_firestore_client,
 )
 from folioaware.adapters.google.vertex import (
@@ -16,6 +17,7 @@ __all__ = [
     "FirestoreInsightRepository",
     "FirestoreKnowledgeRepository",
     "FirestoreQuestionRepository",
+    "FirestoreSyncHistoryRepository",
     "VertexEmbeddingProvider",
     "VertexGenerationProvider",
     "create_firestore_client",

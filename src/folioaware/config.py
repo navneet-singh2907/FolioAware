@@ -26,10 +26,10 @@ class Settings(BaseSettings):
     insight_rules_path: Path = Path("examples/synthetic-portfolio/insight-topics.yaml")
     insight_min_question_count: int = Field(default=2, ge=2, le=100)
     owner_report_token: SecretStr = SecretStr("local-owner-report-token")
-    google_cloud_project: str | None = None
-    google_cloud_location: str = "global"
-    firestore_database: str = "(default)"
-    embedding_model: str = "gemini-embedding-001"
+    google_cloud_project: str | None = Field(default=None, min_length=1)
+    google_cloud_location: str = Field(default="global", min_length=1)
+    firestore_database: str = Field(default="(default)", min_length=1)
+    embedding_model: str = Field(default="gemini-embedding-001", min_length=1)
     embedding_dimensions: int = Field(default=768, ge=1, le=2048)
     generation_model: str | None = None
     google_request_timeout_seconds: int = Field(default=15, ge=1, le=60)
@@ -57,4 +57,28 @@ class Settings(BaseSettings):
             raise ValueError(
                 "Google backend requires google_cloud_project and generation_model"
             )
+        return self
+
+
+class SyncSettings(BaseSettings):
+    """Configuration required only by the knowledge synchronization process."""
+
+    model_config = SettingsConfigDict(
+        env_file=".env",
+        env_prefix="FOLIOAWARE_",
+        extra="ignore",
+    )
+
+    backend: Literal["local", "google"] = "local"
+    google_cloud_project: str | None = Field(default=None, min_length=1)
+    google_cloud_location: str = Field(default="global", min_length=1)
+    firestore_database: str = Field(default="(default)", min_length=1)
+    embedding_model: str = Field(default="gemini-embedding-001", min_length=1)
+    embedding_dimensions: int = Field(default=768, ge=1, le=2048)
+    google_request_timeout_seconds: int = Field(default=15, ge=1, le=60)
+
+    @model_validator(mode="after")
+    def google_sync_requires_project(self) -> SyncSettings:
+        if self.backend == "google" and not self.google_cloud_project:
+            raise ValueError("Google sync requires google_cloud_project")
         return self
