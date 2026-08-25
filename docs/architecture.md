@@ -100,6 +100,7 @@ cloud phase.
 9. [ADR-0009: Deterministic, isolated insight aggregation](adr/0009-deterministic-insight-aggregation.md)
 10. [ADR-0010: Terraform foundation and workflow-scoped WIF](adr/0010-terraform-foundation-and-wif.md)
 11. [ADR-0011: Production Google knowledge synchronization](adr/0011-production-google-knowledge-sync.md)
+12. [ADR-0012: Framework-independent portfolio widget](adr/0012-framework-independent-portfolio-widget.md)
 
 ## Current platform references
 
