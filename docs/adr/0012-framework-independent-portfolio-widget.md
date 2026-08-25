@@ -1,6 +1,6 @@
 # ADR-0012: Framework-Independent Portfolio Widget
 
-- Status: Proposed
+- Status: Accepted
 - Date: 2026-08-25
 
 ## Context

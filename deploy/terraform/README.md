@@ -19,7 +19,8 @@ The configuration owns:
 - empty Secret Manager containers, never secret values;
 - separate runtime, deploy, and sync service accounts;
 - workflow-scoped GitHub OIDC federation; and
-- an optional Cloud Run service with zero-to-two scaling.
+- an optional Cloud Run service with zero-to-two scaling and an explicit HTTPS
+  portfolio-origin allowlist.
 
 ## Why bootstrap has two phases
 
@@ -32,7 +33,8 @@ breaks that dependency cycle:
 2. An authorized operator adds two secret versions out of band and publishes
    an image.
 3. Service phase (`true`): provide the immutable `@sha256:` image URI and create
-   Cloud Run.
+   Cloud Run. Set `allowed_origins` to the exact independently hosted portfolio
+   origins whose browser JavaScript may read cross-origin API responses.
 
 This is a deliberate safety latch, not a feature flag used at runtime.
 

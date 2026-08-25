@@ -4,6 +4,7 @@ project_id                 = "example-folio-aware-project"
 github_repository_id       = "123456789"
 github_repository_owner_id = "987654321"
 generation_model           = "gemini-2.5-flash"
+allowed_origins             = ["https://portfolio.example"]
 
 # Pin the reusable workflow to the exact FolioAware commit used by the caller.
 deploy_workflow_ref = "example-org/folio-aware/.github/workflows/deploy-reusable.yml@0123456789abcdef0123456789abcdef01234567"

@@ -104,6 +104,13 @@ Application Default Credentials and expects the Firestore database and required
 vector/composite index to exist already. Starting FolioAware never provisions
 APIs, IAM, indexes, databases, or Cloud Run services.
 
+Cross-origin browser access is denied by default. Configure
+`FOLIOAWARE_ALLOWED_ORIGINS` as a JSON array of exact portfolio origins, for
+example `["https://portfolio.example"]`. Wildcards are rejected, production
+origins must use HTTPS, credentials are disabled, and the middleware permits
+only `POST` with `Content-Type`. CORS is a browser policy, not authentication,
+rate limiting, bot protection, or a spending limit.
+
 The Google adapters intentionally preserve the same application ports:
 
 - Vertex embeddings select document/query task types and disable silent input

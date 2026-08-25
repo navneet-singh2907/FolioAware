@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 from typing import Literal
+from urllib.parse import urlsplit
 
-from pydantic import Field, SecretStr, model_validator
+from pydantic import Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -18,6 +19,7 @@ class Settings(BaseSettings):
 
     environment: str = "development"
     backend: Literal["local", "google"] = "local"
+    allowed_origins: tuple[str, ...] = ()
     session_hash_secret: SecretStr = SecretStr("local-development-only")
     content_root: Path = Path("examples/synthetic-portfolio")
     retrieval_distance_threshold: float = Field(default=0.85, ge=0, le=2)
@@ -34,6 +36,47 @@ class Settings(BaseSettings):
     generation_model: str | None = None
     google_request_timeout_seconds: int = Field(default=15, ge=1, le=60)
     generation_max_output_tokens: int = Field(default=512, ge=64, le=2048)
+
+    @field_validator("allowed_origins")
+    @classmethod
+    def validate_allowed_origins(cls, origins: tuple[str, ...]) -> tuple[str, ...]:
+        normalized: list[str] = []
+        for origin in origins:
+            candidate = origin.strip()
+            if not candidate or "*" in candidate:
+                raise ValueError("allowed origins must be explicit HTTP(S) origins")
+
+            try:
+                parsed = urlsplit(candidate)
+                port = parsed.port
+            except ValueError as error:
+                raise ValueError("allowed origin contains an invalid port") from error
+
+            if (
+                parsed.scheme.casefold() not in {"http", "https"}
+                or parsed.hostname is None
+                or parsed.username is not None
+                or parsed.password is not None
+                or parsed.path not in {"", "/"}
+                or parsed.query
+                or parsed.fragment
+            ):
+                raise ValueError(
+                    "allowed origins must contain only scheme, host, and optional port"
+                )
+
+            scheme = parsed.scheme.casefold()
+            host = parsed.hostname.casefold()
+            host_display = f"[{host}]" if ":" in host else host
+            default_port = (scheme == "http" and port == 80) or (
+                scheme == "https" and port == 443
+            )
+            canonical = f"{scheme}://{host_display}"
+            if port is not None and not default_port:
+                canonical = f"{canonical}:{port}"
+            if canonical not in normalized:
+                normalized.append(canonical)
+        return tuple(normalized)
 
     @model_validator(mode="after")
     def production_requires_real_secret(self) -> Settings:
@@ -57,6 +100,16 @@ class Settings(BaseSettings):
             raise ValueError(
                 "Google backend requires google_cloud_project and generation_model"
             )
+        for origin in self.allowed_origins:
+            parsed = urlsplit(origin)
+            host = parsed.hostname
+            is_loopback = host in {"localhost", "127.0.0.1", "::1"}
+            if parsed.scheme == "http" and (
+                self.environment == "production" or not is_loopback
+            ):
+                raise ValueError(
+                    "HTTP allowed origins are limited to local development"
+                )
         return self
 
 
