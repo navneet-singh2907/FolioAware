@@ -13,6 +13,7 @@ variables {
   github_repository_id       = "123456789"
   github_repository_owner_id = "987654321"
   generation_model           = "gemini-2.5-flash"
+  allowed_origins            = ["https://portfolio.example"]
   deploy_workflow_ref        = "example-org/folio-aware/.github/workflows/deploy-reusable.yml@0123456789abcdef0123456789abcdef01234567"
   sync_workflow_ref          = "example-org/folio-aware/.github/workflows/sync-reusable.yml@0123456789abcdef0123456789abcdef01234567"
 }
@@ -73,4 +74,22 @@ run "service_has_cost_and_safety_guards" {
     condition     = google_cloud_run_v2_service.api[0].deletion_protection
     error_message = "Cloud Run deletion protection must remain enabled."
   }
+
+  assert {
+    condition = one([
+      for environment_variable in google_cloud_run_v2_service.api[0].template[0].containers[0].env :
+      environment_variable.value if environment_variable.name == "FOLIOAWARE_ALLOWED_ORIGINS"
+    ]) == jsonencode(["https://portfolio.example"])
+    error_message = "Cloud Run must receive the exact browser-origin allowlist."
+  }
+}
+
+run "insecure_browser_origins_are_rejected" {
+  command = plan
+
+  variables {
+    allowed_origins = ["http://portfolio.example", "https://*.example"]
+  }
+
+  expect_failures = [var.allowed_origins]
 }

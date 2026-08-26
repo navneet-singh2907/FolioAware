@@ -1,0 +1,40 @@
+{
+  "name": "@folioaware/widget",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Framework-independent browser client for FolioAware.",
+  "license": "Apache-2.0",
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "module": "./dist/folio-aware.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/folio-aware.js"
+    }
+  },
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.build.json",
+    "check": "npm run lint && npm run format:check && npm run typecheck && npm run test:coverage && npm run build && npm run verify:bundle",
+    "format": "biome format --write src tests scripts vite.config.ts",
+    "format:check": "biome format src tests scripts vite.config.ts",
+    "lint": "biome lint src tests scripts vite.config.ts",
+    "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "typecheck": "tsc --noEmit",
+    "verify:bundle": "node scripts/verify-bundle.mjs"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.5.10",
+    "@vitest/coverage-v8": "4.1.11",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "vitest": "4.1.11"
+  }
+}

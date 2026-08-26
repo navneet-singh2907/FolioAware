@@ -5,6 +5,7 @@ from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
+from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
@@ -16,6 +17,7 @@ from folioaware.api.schemas import (
     InsightReportResponse,
     ProblemResponse,
 )
+from folioaware.config import Settings
 from folioaware.domain.exceptions import (
     InsightsUnavailableError,
     InvalidModelOutputError,
@@ -39,13 +41,26 @@ def _problem(*, request_id: str, status: int, code: str, title: str) -> JSONResp
     )
 
 
-def create_app(container: ApplicationContainer | None = None) -> FastAPI:
+def create_app(
+    container: ApplicationContainer | None = None,
+    *,
+    settings: Settings | None = None,
+) -> FastAPI:
     """Create an application using explicit dependencies and no network I/O."""
-    dependencies = container or build_container()
+    resolved_settings = settings or Settings()
+    dependencies = container or build_container(resolved_settings)
     application = FastAPI(
         title="FolioAware",
         summary="A portfolio agent that stays current.",
         version="0.1.0",
+    )
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(resolved_settings.allowed_origins),
+        allow_credentials=False,
+        allow_methods=["POST"],
+        allow_headers=["Content-Type"],
+        max_age=600,
     )
     application.state.container = dependencies
     bearer = HTTPBearer(auto_error=False)

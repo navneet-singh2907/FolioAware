@@ -124,12 +124,16 @@ changes.
 
 ### Commit 2: Explicit API CORS boundary
 
+Status: implemented on `feature/portfolio-widget`.
+
 Add validated allowed-origin settings, narrowly configured middleware,
 environment/Terraform documentation, and integration tests for allowed,
 disallowed, wildcard, production-HTTP, preflight, credential, and owner-header
 cases.
 
 ### Commit 3: Widget toolchain and transport
+
+Status: implemented on `feature/portfolio-widget`.
 
 Create the locked TypeScript package, response validators, URL policy, request
 client, state types, and focused tests. Verify that no runtime framework or

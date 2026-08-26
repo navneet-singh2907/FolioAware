@@ -68,6 +68,11 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "FOLIOAWARE_ALLOWED_ORIGINS"
+        value = jsonencode(var.allowed_origins)
+      }
+
+      env {
         name  = "FOLIOAWARE_GOOGLE_CLOUD_PROJECT"
         value = var.project_id
       }

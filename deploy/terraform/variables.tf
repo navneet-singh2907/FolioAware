@@ -5,6 +5,26 @@ variable "container_image" {
   nullable    = true
 }
 
+variable "allowed_origins" {
+  description = "Exact HTTPS portfolio origins granted browser CORS response access."
+  type        = list(string)
+  default     = []
+
+  validation {
+    condition = (
+      length(distinct(var.allowed_origins)) == length(var.allowed_origins) &&
+      alltrue([
+        for origin in var.allowed_origins :
+        trimspace(origin) == origin &&
+        !strcontains(origin, "*") &&
+        !strcontains(origin, "@") &&
+        can(regex("^https://[^/?#]+$", origin))
+      ])
+    )
+    error_message = "allowed_origins must contain unique explicit HTTPS origins."
+  }
+}
+
 variable "deploy_service" {
   description = "Whether Terraform should create Cloud Run. Keep false until image and secret versions exist."
   type        = bool
