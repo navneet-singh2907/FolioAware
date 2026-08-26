@@ -22,9 +22,9 @@
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run test:coverage && npm run build && npm run verify:bundle",
-    "format": "biome format --write src tests scripts vite.config.ts",
-    "format:check": "biome format src tests scripts vite.config.ts",
-    "lint": "biome lint src tests scripts vite.config.ts",
+    "format": "biome format --write src tests scripts demo vite.config.ts",
+    "format:check": "biome format src tests scripts demo vite.config.ts",
+    "lint": "biome lint src tests scripts demo vite.config.ts",
     "test": "vitest run",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
@@ -33,6 +33,7 @@
   "devDependencies": {
     "@biomejs/biome": "2.5.10",
     "@vitest/coverage-v8": "4.1.11",
+    "jsdom": "29.1.1",
     "typescript": "7.0.2",
     "vite": "8.2.2",
     "vitest": "4.1.11"

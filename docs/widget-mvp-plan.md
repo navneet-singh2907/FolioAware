@@ -141,6 +141,8 @@ credential configuration enters the bundle.
 
 ### Commit 4: Accessible custom-element slice
 
+Status: implemented on `feature/portfolio-widget`.
+
 Implement the custom element, plain-text rendering, citations, focus/state
 behavior, theming hooks, synthetic demo, and component/browser tests.
 
