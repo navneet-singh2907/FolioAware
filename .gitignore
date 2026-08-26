@@ -45,3 +45,5 @@ Thumbs.db
 # Build artifacts
 build/
 dist/
+node_modules/
+coverage/
