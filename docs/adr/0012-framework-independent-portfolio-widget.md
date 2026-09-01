@@ -97,6 +97,10 @@ custom properties with accessible defaults.
   separate requirement before public cloud launch.
 - No deployment or npm publication is part of this slice. The local demo uses
   synthetic data and the existing local API.
+- Semantic answer caching is excluded from the MVP because a cached response
+  could outlive a corrected or removed knowledge version. Provider-managed
+  caches may reduce serving work but cannot be a correctness layer and require
+  a separate privacy/retention decision before deployment.
 - A React wrapper can be added later without changing the custom element.
 
 ## Revisit when

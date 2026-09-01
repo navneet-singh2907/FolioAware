@@ -148,6 +148,8 @@ behavior, theming hooks, synthetic demo, and component/browser tests.
 
 ### Commit 5: CI, documentation, and adversarial review
 
+Status: implemented on `feature/portfolio-widget`.
+
 Run widget checks in CI, document adopter integration, update the threat model
 and repository structure, and verify malicious HTML, bad URLs, malformed
 responses, timeouts, rapid submissions, and knowledge gaps.
