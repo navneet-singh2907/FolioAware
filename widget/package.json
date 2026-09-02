@@ -17,22 +17,27 @@
     }
   },
   "engines": {
-    "node": ">=22.12.0"
+    "node": ">=22.13.0"
   },
   "scripts": {
     "build": "vite build && tsc -p tsconfig.build.json",
     "check": "npm run lint && npm run format:check && npm run typecheck && npm run test:coverage && npm run build && npm run verify:bundle",
-    "format": "biome format --write src tests scripts vite.config.ts",
-    "format:check": "biome format src tests scripts vite.config.ts",
-    "lint": "biome lint src tests scripts vite.config.ts",
+    "format": "biome format --write src tests scripts demo vite.config.ts playwright.config.ts",
+    "format:check": "biome format src tests scripts demo vite.config.ts playwright.config.ts",
+    "lint": "biome lint src tests scripts demo vite.config.ts playwright.config.ts",
+    "preview:demo": "vite --host 127.0.0.1 --port 4173 --strictPort",
     "test": "vitest run",
+    "test:browser": "npm run build && playwright test",
     "test:coverage": "vitest run --coverage",
     "typecheck": "tsc --noEmit",
     "verify:bundle": "node scripts/verify-bundle.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.13.0",
     "@biomejs/biome": "2.5.10",
+    "@playwright/test": "1.62.1",
     "@vitest/coverage-v8": "4.1.11",
+    "jsdom": "29.1.1",
     "typescript": "7.0.2",
     "vite": "8.2.2",
     "vitest": "4.1.11"

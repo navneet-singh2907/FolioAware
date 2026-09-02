@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>FolioAware synthetic portfolio demo</title>
+    <style>
+      body {
+        max-width: 54rem;
+        margin: 0 auto;
+        padding: 3rem 1.25rem 8rem;
+        background: #f8fafc;
+        color: #172033;
+        font: 400 1rem/1.65 system-ui, sans-serif;
+      }
+      h1 { line-height: 1.15; }
+      .notice {
+        border-left: 0.3rem solid #0f766e;
+        padding: 0.75rem 1rem;
+        background: #ffffff;
+      }
+      folio-aware {
+        --folio-aware-accent: #0f766e;
+        --folio-aware-accent-hover: #115e59;
+      }
+    </style>
+    <script type="module" src="../dist/folio-aware.js"></script>
+  </head>
+  <body>
+    <main>
+      <p>FolioAware synthetic demonstration</p>
+      <h1>Alex Morgan builds reliable public-interest software.</h1>
+      <p>
+        This page contains fictional content only. Open the portfolio assistant
+        to ask about the approved synthetic projects in this repository.
+      </p>
+      <p class="notice">
+        The local FastAPI API must be running on port 8000 with this demo's
+        origin included in <code>FOLIOAWARE_ALLOWED_ORIGINS</code>.
+      </p>
+    </main>
+
+    <folio-aware
+      api-base-url="http://127.0.0.1:8000"
+      assistant-name="Alex's portfolio assistant"
+    ></folio-aware>
+  </body>
+</html>

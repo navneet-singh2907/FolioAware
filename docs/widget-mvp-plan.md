@@ -141,10 +141,14 @@ credential configuration enters the bundle.
 
 ### Commit 4: Accessible custom-element slice
 
+Status: implemented on `feature/portfolio-widget`.
+
 Implement the custom element, plain-text rendering, citations, focus/state
 behavior, theming hooks, synthetic demo, and component/browser tests.
 
 ### Commit 5: CI, documentation, and adversarial review
+
+Status: implemented on `feature/portfolio-widget`.
 
 Run widget checks in CI, document adopter integration, update the threat model
 and repository structure, and verify malicious HTML, bad URLs, malformed

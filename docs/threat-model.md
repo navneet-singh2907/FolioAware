@@ -9,7 +9,7 @@ This threat model covers the planned single-tenant FolioAware deployment:
 - Firestore knowledge, telemetry, synchronization, and insight data;
 - Vertex AI embedding and generation calls;
 - GitHub Actions authenticated with Workload Identity Federation; and
-- the independently hosted portfolio frontend.
+- the framework-independent widget on the independently hosted portfolio.
 
 It describes required controls. A control is not considered implemented until
 corresponding code, configuration, and tests exist.
@@ -62,7 +62,8 @@ In priority order, FolioAware must:
 
 ```mermaid
 flowchart TD
-    V["Untrusted visitor/browser"] -->|"question"| API["Public API boundary"]
+    V["Untrusted visitor/browser"] -->|"question"| W["Widget boundary"]
+    W -->|"bounded JSON; no credentials"| API["Public API boundary"]
     API -->|"bounded query"| EMB["Vertex embedding boundary"]
     API -->|"read active evidence"| FS["Firestore boundary"]
     API -->|"redacted telemetry"| FS
@@ -95,6 +96,12 @@ output remain untrusted even after an approved source has been ingested.
   validation and evaluations succeed.
 - Every external call has a timeout, bounded input/output, and explicit retry
   policy. No model-controlled retry loop exists.
+- The widget stores no visitor data, validates every response at runtime,
+  renders plain text, and permits only HTTPS or root-relative citations.
+- CORS is an exact browser-origin policy, never treated as an abuse or cost
+  control.
+- Semantic answer caching is prohibited in the MVP. Provider-managed caches
+  cannot establish correctness or evidence freshness.
 
 ## Threat register
 
@@ -122,6 +129,10 @@ Ratings describe risk before the listed controls are implemented.
 | T18 | Logs contain questions, evidence, prompts, tokens, or vendor payloads | Information disclosure | High | Structured allowlisted logging; no raw bodies by default; sanitization; restricted log access and retention | Record code/metadata only |
 | T19 | Analytics suggests claiming an unsupported skill | Misinformation; excessive agency | High | Fixed recommendation enum; language distinguishes interest from evidence; no knowledge-write port; owner approval | Suggest study/build/leave unavailable |
 | T20 | Configuration drift changes model, threshold, prompt, or index compatibility silently | Tampering; repudiation | Medium | Version all relevant configuration; validate at startup/sync; include versions in safe traces and evaluations | Refuse incompatible index/request |
+| T21 | A malformed or malicious API response executes script or creates unsafe navigation in the portfolio | Improper output handling; XSS | High | Exact bounded response validation; plain-text DOM writes; safe citation URL policy; production-bundle browser tests | Generic recoverable widget error |
+| T22 | A cached answer survives corrected, removed, or newly private evidence | Tampering; stale evidence | High | No semantic answer cache in MVP; future cache keys must include knowledge, model, prompt, and policy versions and revalidate citation membership | Bypass or evict cache; retrieve active evidence |
+| T23 | Provider prompt/prefix caching changes retention, region, or privacy assumptions | Information disclosure; supply chain | Medium | Make provider cache use an explicit pre-deployment decision; document data handling, region, TTL, and disable controls; never depend on it for correctness | Disable provider cache |
+| T24 | CORS is mistaken for authentication or cost protection | Spoofing; denial of service | High | Exact origin allowlist plus independent server-side rate limits, budgets, alerts, timeouts, and maximum instances before deployment | `429`/`503`; contain spend |
 
 ## STRIDE summary
 
@@ -219,7 +230,10 @@ Before the local MVP is considered complete, automated tests must cover:
 - telemetry-to-knowledge contamination attempts;
 - failed and concurrent synchronization;
 - model timeout and repository failure; and
-- secret/private-data scanning of public fixtures.
+- secret/private-data scanning of public fixtures;
+- malicious widget answer text, unsafe citation URLs, and malformed responses;
+- widget keyboard, responsive, and automated accessibility behavior; and
+- bundle checks for credentials, persistence APIs, unsafe HTML, and size.
 
 Before cloud deployment, additionally verify IAM permissions, WIF conditions,
 CORS, rate limiting, budgets/alerts, retention, redacted logs, dependency/image
@@ -236,6 +250,8 @@ Even with these controls:
 - compromised cloud/GitHub administrators can bypass application controls;
 - rate limits cannot guarantee a fixed bill under every attack; and
 - third-party platform behavior and pricing can change.
+- automated accessibility rules cannot replace manual keyboard and assistive
+  technology testing in an adopter's complete page.
 
 These risks require evaluation, monitoring, least privilege, human review, and
 periodic threat-model revision rather than claims of perfect safety.
@@ -244,5 +260,6 @@ periodic threat-model revision rather than claims of perfect safety.
 
 Revisit this document when adding a model tool, web browsing, owner dashboard,
 new content adapter, multi-tenancy, cross-session memory, automated pull
-requests, a new deployment identity, private evidence, or a new data processor.
+requests, a new deployment identity, private evidence, answer or provider
+caching, persistent browser storage, or a new data processor.
 

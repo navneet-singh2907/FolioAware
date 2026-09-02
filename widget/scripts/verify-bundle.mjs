@@ -11,6 +11,7 @@ const forbiddenMarkers = [
   "firestore",
   "googleapis",
   "innerHTML",
+  "indexedDB",
   "localStorage",
   "sessionStorage",
 ];

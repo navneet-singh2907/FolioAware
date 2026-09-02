@@ -72,6 +72,24 @@ curl -s http://127.0.0.1:8000/v1/ask \
 The first response is `answered` with the Project Atlas citation. The second is
 `knowledge_gap`, has no citations, and does not call the generator.
 
+## Portfolio widget
+
+The top-level [`widget`](widget/README.md) package provides the portable
+`<folio-aware>` custom element. It has no runtime framework dependency, Google
+SDK, browser credential, visitor tracking, or persistent storage. An adopter
+builds the ES module, hosts it with their own portfolio, and configures the API
+deployment with that portfolio's exact CORS origin.
+
+```html
+<script type="module" src="/assets/folio-aware.js"></script>
+<folio-aware api-base-url="https://api.example"></folio-aware>
+```
+
+The widget runtime-validates API responses, renders answers as plain text,
+accepts only HTTPS or root-relative citations, and fails closed on malformed
+data. See the [widget adopter guide](widget/README.md) for build, theme, local
+demo, browser-support, privacy, and accessibility details.
+
 ## Quality checks
 
 ```bash
@@ -79,6 +97,9 @@ uv run ruff check .
 uv run ruff format --check .
 uv run mypy
 uv run pytest --cov --cov-report=term-missing
+npm --prefix widget ci --ignore-scripts --no-audit --no-fund
+npm --prefix widget run check
+npm --prefix widget run test:browser
 docker build --tag folio-aware:local .
 terraform -chdir=deploy/terraform fmt -check -recursive
 terraform -chdir=deploy/terraform init -backend=false -lockfile=readonly
@@ -86,10 +107,11 @@ terraform -chdir=deploy/terraform validate
 terraform -chdir=deploy/terraform test
 ```
 
-The test suite is offline and uses no cloud credentials. CI runs the same lint,
-format, type, test, image-build, non-root, health, and mocked-infrastructure
-checks. Terraform initialization downloads provider plugins but does not access
-a state backend or Google Cloud.
+The test suites use no cloud credentials. CI runs the same Python and widget
+lint, format, type, test, production-build, browser/accessibility, image-build,
+non-root, health, and mocked-infrastructure checks. Terraform initialization
+downloads provider plugins but does not access a state backend or Google Cloud.
+Playwright downloads a locked Chromium test browser only for the widget job.
 
 ## Configuration
 
@@ -222,6 +244,8 @@ has a separate composition root and how terminal history failures are handled.
 - [Terraform deployment foundation](deploy/terraform/README.md)
 - [Infrastructure permission map](docs/infrastructure-permissions.md)
 - [Production Google synchronization decision](docs/adr/0011-production-google-knowledge-sync.md)
+- [Portfolio widget adopter guide](widget/README.md)
+- [Widget architecture decision](docs/adr/0012-framework-independent-portfolio-widget.md)
 - [Portable approved-source schema](schemas/knowledge-source.schema.json)
 
 No real portfolio content or visitor analytics are included. No cloud resource,

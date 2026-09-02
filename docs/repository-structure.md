@@ -2,14 +2,12 @@
 
 ## Decision
 
-The FolioAware MVP will use one Python distribution with a `src` layout. The
-FastAPI service, synchronization CLI, and initial insight command share the
-same domain contracts and application use cases, while Google Cloud code stays
-behind typed ports.
-
-This is intentionally smaller than a multi-application monorepo. A widget,
-React wrapper, dashboard, or independently deployed insight worker will be
-split out only when a working vertical slice demonstrates the need.
+The FolioAware MVP uses one Python distribution with a `src` layout plus one
+independently consumable browser package. The FastAPI service, synchronization
+CLI, and insight command share domain contracts and application use cases,
+while Google Cloud code stays behind typed ports. The native widget has its own
+locked Node.js toolchain because it is built and hosted by an adopting
+portfolio, as recorded in ADR-0012.
 
 ## Target layout
 
@@ -21,7 +19,7 @@ not be created until their feature is implemented.
 folio-aware/
 ├── .github/
 │   └── workflows/
-│       ├── ci.yml                         # current: quality and offline infra checks
+│       ├── ci.yml                         # current: API, widget, container, infra checks
 │       ├── deploy-reusable.yml            # current: keyless image release
 │       └── sync-reusable.yml              # current: keyless approved-content sync
 ├── deploy/
@@ -81,6 +79,15 @@ folio-aware/
 │   ├── contract/                           # port/adapter behavior contracts
 │   ├── integration/                        # API and workflow boundaries
 │   └── unit/                               # pure policy/use-case tests
+├── widget/                                 # current: portable custom-element package
+│   ├── demo/                               # synthetic local adopter page
+│   ├── scripts/                            # bundle security/size policy
+│   ├── src/                                # typed client, validators, component
+│   ├── tests/                              # unit, component, browser, axe checks
+│   ├── package.json                        # scripts and exact dependencies
+│   ├── package-lock.json                   # reproducible dependency graph
+│   ├── playwright.config.ts                # real-browser test policy
+│   └── README.md                           # adopter integration contract
 ├── .dockerignore                           # initial
 ├── .env.example                            # initial: names, no credentials
 ├── .gitignore                              # initial
@@ -179,6 +186,9 @@ discover dependencies from global state.
 - **Evaluations** contain versioned question/evidence/expected-policy fixtures.
   They measure grounding behavior and are not replacements for deterministic
   tests.
+- **Widget tests** exercise transport and DOM state deterministically, then
+  load the production bundle in Chromium for keyboard, responsive, injection,
+  knowledge-gap, and automated accessibility checks.
 
 ## Configuration ownership
 
@@ -193,7 +203,7 @@ discover dependencies from global state.
 
 ## Deliberately deferred structure
 
-The MVP does not create `apps/`, `packages/`, `widget/`, `react/`, or a separate
-insight-job project. Those boundaries would add multiple manifests, releases,
-and CI paths before independent deployment or ownership exists. A future ADR
-must justify the split using an actual packaging, runtime, or team boundary.
+The MVP does not create `apps/`, `packages/`, `react/`, an owner dashboard, or a
+separate insight-job project. The widget is the one justified split because an
+adopter builds it for an independently hosted browser runtime. Additional
+packages require a future ADR and a demonstrated packaging or ownership need.
