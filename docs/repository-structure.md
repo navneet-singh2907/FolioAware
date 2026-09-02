@@ -38,7 +38,8 @@ folio-aware/
 │   ├── threat-model.md                     # current
 │   └── mvp-plan.md                         # current
 ├── evals/
-│   └── fixtures/                           # initial: grounded/refusal cases
+│   ├── fixtures/                           # planned: versioned synthetic suites
+│   └── baselines/                          # planned: accepted deterministic reports
 ├── examples/
 │   └── synthetic-portfolio/                # initial: public synthetic content
 │       ├── content/

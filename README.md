@@ -246,6 +246,8 @@ has a separate composition root and how terminal history failures are handled.
 - [Production Google synchronization decision](docs/adr/0011-production-google-knowledge-sync.md)
 - [Portfolio widget adopter guide](widget/README.md)
 - [Widget architecture decision](docs/adr/0012-framework-independent-portfolio-widget.md)
+- [RAG evaluation harness plan](docs/evaluation-harness-plan.md)
+- [Evaluation architecture decision](docs/adr/0013-repository-native-evaluation-harness.md)
 - [Portable approved-source schema](schemas/knowledge-source.schema.json)
 
 No real portfolio content or visitor analytics are included. No cloud resource,
