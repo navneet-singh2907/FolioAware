@@ -175,7 +175,7 @@ resource "google_cloud_run_v2_service" "api" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
-  count = var.deploy_service ? 1 : 0
+  count = var.deploy_service && var.allow_unauthenticated_invocation ? 1 : 0
 
   project  = var.project_id
   location = google_cloud_run_v2_service.api[0].location

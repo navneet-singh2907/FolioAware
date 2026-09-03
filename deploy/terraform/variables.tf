@@ -106,6 +106,12 @@ variable "deploy_service" {
   default     = false
 }
 
+variable "allow_unauthenticated_invocation" {
+  description = "Whether Cloud Run should grant roles/run.invoker to allUsers. Keep false until approved edge controls prevent direct-URL bypass."
+  type        = bool
+  default     = false
+}
+
 variable "deploy_workflow_ref" {
   description = "Exact GitHub OIDC job_workflow_ref allowed to impersonate the deploy identity."
   type        = string

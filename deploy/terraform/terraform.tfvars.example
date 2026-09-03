@@ -24,6 +24,11 @@ sync_workflow_ref = "example-org/folio-aware/.github/workflows/sync-reusable.yml
 # and both Secret Manager versions exist.
 deploy_service = false
 
+# Keep unauthenticated access disabled for the first authenticated smoke test.
+# Enabling this alone is not sufficient for production: first provision and
+# verify the approved edge controls that prevent direct Cloud Run URL bypass.
+allow_unauthenticated_invocation = false
+
 # Phase two example:
 # deploy_service = true
 # container_image = "us-central1-docker.pkg.dev/example-folio-aware-project/folio-aware/api@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"

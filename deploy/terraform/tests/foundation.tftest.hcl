@@ -76,6 +76,11 @@ run "service_has_cost_and_safety_guards" {
   }
 
   assert {
+    condition     = length(google_cloud_run_v2_service_iam_member.public_invoker) == 0
+    error_message = "Cloud Run must remain authenticated-only unless public invocation is explicitly enabled."
+  }
+
+  assert {
     condition = one([
       for environment_variable in google_cloud_run_v2_service.api[0].template[0].containers[0].env :
       environment_variable.value if environment_variable.name == "FOLIOAWARE_ALLOWED_ORIGINS"
@@ -121,6 +126,21 @@ run "service_has_cost_and_safety_guards" {
       environment_variable.value if environment_variable.name == "FOLIOAWARE_ANSWER_CONCURRENCY_LIMIT"
     ]) == "4"
     error_message = "Cloud Run must configure the application concurrency cap."
+  }
+}
+
+run "public_invocation_requires_explicit_opt_in" {
+  command = plan
+
+  variables {
+    deploy_service                   = true
+    allow_unauthenticated_invocation = true
+    container_image                  = "us-central1-docker.pkg.dev/example-folio-aware-project/folio-aware/api@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+
+  assert {
+    condition     = google_cloud_run_v2_service_iam_member.public_invoker[0].member == "allUsers"
+    error_message = "Explicit public invocation must grant the Cloud Run invoker role to allUsers."
   }
 }
 

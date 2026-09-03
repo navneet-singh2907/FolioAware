@@ -4,7 +4,7 @@ output "artifact_registry_repository" {
 }
 
 output "cloud_run_service_uri" {
-  description = "Public Cloud Run URI, or null while deploy_service is false."
+  description = "Cloud Run service URI, or null while deploy_service is false. IAM and ingress still determine whether it is publicly reachable."
   value       = var.deploy_service ? google_cloud_run_v2_service.api[0].uri : null
 }
 
