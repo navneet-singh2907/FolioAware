@@ -73,6 +73,31 @@ resource "google_cloud_run_v2_service" "api" {
       }
 
       env {
+        name  = "FOLIOAWARE_RATE_LIMIT_PER_CLIENT_REQUESTS"
+        value = tostring(var.rate_limit_per_client_requests)
+      }
+
+      env {
+        name  = "FOLIOAWARE_RATE_LIMIT_GLOBAL_REQUESTS"
+        value = tostring(var.rate_limit_global_requests)
+      }
+
+      env {
+        name  = "FOLIOAWARE_RATE_LIMIT_WINDOW_SECONDS"
+        value = tostring(var.rate_limit_window_seconds)
+      }
+
+      env {
+        name  = "FOLIOAWARE_RATE_LIMIT_MAX_CLIENTS"
+        value = tostring(var.rate_limit_max_clients)
+      }
+
+      env {
+        name  = "FOLIOAWARE_ANSWER_CONCURRENCY_LIMIT"
+        value = tostring(var.answer_concurrency_limit)
+      }
+
+      env {
         name  = "FOLIOAWARE_GOOGLE_CLOUD_PROJECT"
         value = var.project_id
       }
@@ -141,6 +166,11 @@ resource "google_cloud_run_v2_service" "api" {
 
   lifecycle {
     ignore_changes = [template[0].containers[0].image]
+
+    precondition {
+      condition     = var.rate_limit_global_requests >= var.rate_limit_per_client_requests
+      error_message = "The global request limit cannot be lower than the per-client request limit."
+    }
   }
 }
 

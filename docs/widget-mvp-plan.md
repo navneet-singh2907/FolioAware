@@ -58,8 +58,8 @@ The slice is complete when:
 - CAPTCHA, CDN hosting, npm publication, Cloud Run deployment, Terraform apply,
   or billable infrastructure.
 - Multiple themes, localization, rich animations, or a complete design system.
-- Server-side rate limiting; it remains a required pre-deployment branch rather
-  than a client control.
+- Server-side rate limiting is implemented by ADR-0014 as a pre-deployment
+  application control rather than a client control.
 
 ## Browser/API contract
 

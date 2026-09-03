@@ -25,6 +25,81 @@ variable "allowed_origins" {
   }
 }
 
+variable "rate_limit_per_client_requests" {
+  description = "Maximum public answer requests per ASGI-resolved client in one local window per process."
+  type        = number
+  default     = 10
+
+  validation {
+    condition = (
+      floor(var.rate_limit_per_client_requests) == var.rate_limit_per_client_requests &&
+      var.rate_limit_per_client_requests >= 1 &&
+      var.rate_limit_per_client_requests <= 1000
+    )
+    error_message = "rate_limit_per_client_requests must be a whole number between 1 and 1000."
+  }
+}
+
+variable "rate_limit_global_requests" {
+  description = "Maximum public answer requests across all clients in one local window per process."
+  type        = number
+  default     = 100
+
+  validation {
+    condition = (
+      floor(var.rate_limit_global_requests) == var.rate_limit_global_requests &&
+      var.rate_limit_global_requests >= 1 &&
+      var.rate_limit_global_requests <= 10000
+    )
+    error_message = "rate_limit_global_requests must be a whole number between 1 and 10000."
+  }
+}
+
+variable "rate_limit_window_seconds" {
+  description = "Fixed-window duration for in-process public answer quotas."
+  type        = number
+  default     = 60
+
+  validation {
+    condition = (
+      floor(var.rate_limit_window_seconds) == var.rate_limit_window_seconds &&
+      var.rate_limit_window_seconds >= 1 &&
+      var.rate_limit_window_seconds <= 3600
+    )
+    error_message = "rate_limit_window_seconds must be a whole number between 1 and 3600."
+  }
+}
+
+variable "rate_limit_max_clients" {
+  description = "Maximum in-memory client buckets retained by each process."
+  type        = number
+  default     = 10000
+
+  validation {
+    condition = (
+      floor(var.rate_limit_max_clients) == var.rate_limit_max_clients &&
+      var.rate_limit_max_clients >= 100 &&
+      var.rate_limit_max_clients <= 100000
+    )
+    error_message = "rate_limit_max_clients must be a whole number between 100 and 100000."
+  }
+}
+
+variable "answer_concurrency_limit" {
+  description = "Maximum answer requests admitted concurrently by each application process."
+  type        = number
+  default     = 4
+
+  validation {
+    condition = (
+      floor(var.answer_concurrency_limit) == var.answer_concurrency_limit &&
+      var.answer_concurrency_limit >= 1 &&
+      var.answer_concurrency_limit <= 100
+    )
+    error_message = "answer_concurrency_limit must be a whole number between 1 and 100."
+  }
+}
+
 variable "deploy_service" {
   description = "Whether Terraform should create Cloud Run. Keep false until image and secret versions exist."
   type        = bool

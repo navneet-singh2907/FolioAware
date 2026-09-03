@@ -146,9 +146,10 @@ does not expose it.
 
 ### `security`
 
-Owns reusable input limits and telemetry redaction. Authorization and cloud IAM
-remain deployment concerns, while request-specific enforcement is called from
-the entry point or application boundary.
+Owns reusable input limits, bounded public-answer admission, and telemetry
+redaction. Authorization and cloud IAM remain deployment concerns, while
+request-specific enforcement is called from the entry point or application
+boundary.
 
 ### `analytics` and `notifications`
 

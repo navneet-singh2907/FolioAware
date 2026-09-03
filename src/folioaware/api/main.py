@@ -1,12 +1,13 @@
 """FastAPI application composition root."""
 
+from collections.abc import Awaitable, Callable
 from hmac import compare_digest
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
 from folioaware.api.dependencies import ApplicationContainer, build_container
@@ -24,6 +25,7 @@ from folioaware.domain.exceptions import (
     KnowledgeUnavailableError,
     ModelUnavailableError,
 )
+from folioaware.security import PublicRequestGuard
 
 
 def _problem(*, request_id: str, status: int, code: str, title: str) -> JSONResponse:
@@ -54,16 +56,15 @@ def create_app(
         summary="A portfolio agent that stays current.",
         version="0.1.0",
     )
-    application.add_middleware(
-        CORSMiddleware,
-        allow_origins=list(resolved_settings.allowed_origins),
-        allow_credentials=False,
-        allow_methods=["POST"],
-        allow_headers=["Content-Type"],
-        max_age=600,
-    )
     application.state.container = dependencies
     bearer = HTTPBearer(auto_error=False)
+    request_guard = PublicRequestGuard(
+        per_client_limit=resolved_settings.rate_limit_per_client_requests,
+        global_limit=resolved_settings.rate_limit_global_requests,
+        window_seconds=resolved_settings.rate_limit_window_seconds,
+        max_clients=resolved_settings.rate_limit_max_clients,
+        max_concurrent=resolved_settings.answer_concurrency_limit,
+    )
 
     def next_request_id() -> str:
         return dependencies.identifiers.new()
@@ -76,6 +77,48 @@ def create_app(
             dependencies.owner_report_token.get_secret_value(),
         ):
             raise HTTPException(status_code=401, detail="owner authentication required")
+
+    @application.middleware("http")
+    async def protect_public_answers(
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+    ) -> Response:
+        if request.method != "POST" or request.url.path != "/v1/ask":
+            return await call_next(request)
+
+        client_key = request.client.host if request.client is not None else "unknown"
+        decision = request_guard.admit(client_key)
+        if not decision.admitted:
+            if decision.reason == "rate_limited":
+                response = _problem(
+                    request_id=next_request_id(),
+                    status=429,
+                    code="RATE_LIMITED",
+                    title="Too many questions were submitted",
+                )
+            else:
+                response = _problem(
+                    request_id=next_request_id(),
+                    status=503,
+                    code="ANSWER_CAPACITY_EXCEEDED",
+                    title="Answer capacity is temporarily unavailable",
+                )
+            response.headers["Retry-After"] = str(decision.retry_after_seconds)
+            return response
+
+        try:
+            return await call_next(request)
+        finally:
+            request_guard.release()
+
+    application.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(resolved_settings.allowed_origins),
+        allow_credentials=False,
+        allow_methods=["POST"],
+        allow_headers=["Content-Type"],
+        max_age=600,
+    )
 
     @application.exception_handler(RequestValidationError)
     async def validation_error(

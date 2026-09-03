@@ -6,6 +6,14 @@ github_repository_owner_id = "987654321"
 generation_model           = "gemini-2.5-flash"
 allowed_origins             = ["https://portfolio.example"]
 
+# Per-process application admission controls. Pair these with deployment-level
+# edge rate limits, billing budgets, and alerts before accepting public traffic.
+rate_limit_per_client_requests = 10
+rate_limit_global_requests     = 100
+rate_limit_window_seconds      = 60
+rate_limit_max_clients         = 10000
+answer_concurrency_limit       = 4
+
 # Pin the reusable workflow to the exact FolioAware commit used by the caller.
 deploy_workflow_ref = "example-org/folio-aware/.github/workflows/deploy-reusable.yml@0123456789abcdef0123456789abcdef01234567"
 

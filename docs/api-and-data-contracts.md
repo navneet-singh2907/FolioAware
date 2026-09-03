@@ -182,12 +182,16 @@ Expected codes include:
 | `422` | `INVALID_QUESTION` | Question fails content constraints |
 | `422` | `QUESTION_TOO_LONG` | Normalized question exceeds the limit |
 | `429` | `RATE_LIMITED` | Request budget exceeded |
+| `503` | `ANSWER_CAPACITY_EXCEEDED` | In-process answer concurrency is exhausted |
 | `503` | `KNOWLEDGE_UNAVAILABLE` | Active knowledge cannot be read |
 | `503` | `MODEL_UNAVAILABLE` | Required model dependency failed or timed out |
 | `500` | `INVALID_MODEL_OUTPUT` | Model output failed closed during validation |
 
 Internal exception text, prompts, retrieved passages, stack traces, and vendor
 payloads are logged only through a redacting logger and are never returned.
+Admission-control responses include an integer `Retry-After` header. Health,
+CORS preflight, and authenticated owner-report requests do not consume the
+public answer quota.
 
 ## Public API models
 
@@ -503,4 +507,3 @@ The smallest implementation must support:
 Readiness, feedback, partial answers, cloud deployment, and notifications follow
 in later bounded changes. Google adapters and deterministic topic insights are
 implemented.
-
