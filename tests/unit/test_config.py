@@ -4,6 +4,10 @@ from pydantic import SecretStr, ValidationError
 from folioaware.config import Settings, SyncSettings
 
 
+def test_default_retrieval_threshold_matches_accepted_baseline() -> None:
+    assert Settings().retrieval_distance_threshold == 0.72
+
+
 def test_production_rejects_development_session_secret() -> None:
     with pytest.raises(ValidationError, match="at least 32 characters"):
         Settings(environment="production")

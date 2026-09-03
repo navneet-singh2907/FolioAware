@@ -22,7 +22,7 @@ class Settings(BaseSettings):
     allowed_origins: tuple[str, ...] = ()
     session_hash_secret: SecretStr = SecretStr("local-development-only")
     content_root: Path = Path("examples/synthetic-portfolio")
-    retrieval_distance_threshold: float = Field(default=0.85, ge=0, le=2)
+    retrieval_distance_threshold: float = Field(default=0.72, ge=0, le=2)
     retrieval_top_k: int = Field(default=5, ge=1, le=5)
     telemetry_retention_days: int = Field(default=90, ge=1, le=365)
     insight_rules_path: Path = Path("examples/synthetic-portfolio/insight-topics.yaml")

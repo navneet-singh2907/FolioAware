@@ -72,6 +72,39 @@ curl -s http://127.0.0.1:8000/v1/ask \
 The first response is `answered` with the Project Atlas citation. The second is
 `knowledge_gap`, has no citations, and does not call the generator.
 
+## Offline evaluation
+
+Run the versioned synthetic suite through both retrieval and the normal answer
+policy without credentials, network calls, or retained visitor telemetry:
+
+```bash
+uv run folioaware evaluate \
+  --suite evals/fixtures/synthetic-portfolio-v1.yaml \
+  --content-root examples/synthetic-portfolio \
+  --git-commit abcdef1 \
+  --output tmp/evaluation-report.json
+```
+
+The command prints byte-stable JSON and optionally writes the identical report
+to `--output`. Exit code `0` means every hard evidence gate passed, `1` means
+evaluation completed with at least one safety failure, and `2` means the suite,
+configuration, or a required dependency was unavailable or invalid. Retrieval
+quality metrics describe the synthetic local adapter and are pinned by the
+reviewed baseline; they are not production-model claims.
+
+CI compares the same deterministic run with the reviewed baseline:
+
+```bash
+uv run folioaware evaluate \
+  --git-commit 4770cb3 \
+  --distance-threshold 0.72 \
+  --top-k 5 \
+  --baseline evals/baselines/synthetic-portfolio-v1.json
+```
+
+See the [baseline decision](docs/evaluation-baseline.md) for the measured safety
+and coverage tradeoff.
+
 ## Portfolio widget
 
 The top-level [`widget`](widget/README.md) package provides the portable
@@ -246,6 +279,9 @@ has a separate composition root and how terminal history failures are handled.
 - [Production Google synchronization decision](docs/adr/0011-production-google-knowledge-sync.md)
 - [Portfolio widget adopter guide](widget/README.md)
 - [Widget architecture decision](docs/adr/0012-framework-independent-portfolio-widget.md)
+- [RAG evaluation harness plan](docs/evaluation-harness-plan.md)
+- [Evaluation architecture decision](docs/adr/0013-repository-native-evaluation-harness.md)
+- [Accepted synthetic evaluation baseline](docs/evaluation-baseline.md)
 - [Portable approved-source schema](schemas/knowledge-source.schema.json)
 
 No real portfolio content or visitor analytics are included. No cloud resource,

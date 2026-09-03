@@ -80,6 +80,14 @@ jobs:
       - name: Test
         run: uv run pytest --cov --cov-report=term-missing --cov-report=xml
 
+      - name: Enforce accepted offline RAG baseline
+        run: >-
+          uv run folioaware evaluate
+          --git-commit 4770cb3
+          --distance-threshold 0.72
+          --top-k 5
+          --baseline evals/baselines/synthetic-portfolio-v1.json
+
   container:
     runs-on: ubuntu-latest
     timeout-minutes: 15
