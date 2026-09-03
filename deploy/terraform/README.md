@@ -32,9 +32,13 @@ breaks that dependency cycle:
    identities, WIF, and empty secret containers.
 2. An authorized operator adds two secret versions out of band and publishes
    an image.
-3. Service phase (`true`): provide the immutable `@sha256:` image URI and create
-   Cloud Run. Set `allowed_origins` to the exact independently hosted portfolio
-   origins whose browser JavaScript may read cross-origin API responses.
+3. Private service phase (`true`): provide the immutable `@sha256:` image URI,
+   create Cloud Run, and perform an authenticated smoke test. Set
+   `allowed_origins` to the exact independently hosted portfolio origins whose
+   browser JavaScript may read cross-origin API responses.
+4. Public traffic phase: only after approved edge controls prevent direct-URL
+   bypass, explicitly set `allow_unauthenticated_invocation = true` to grant
+   `roles/run.invoker` to `allUsers`.
 
 This is a deliberate safety latch, not a feature flag used at runtime.
 
@@ -100,6 +104,11 @@ An alerts-only budget sends notifications but does not cap spending. None of
 these external resources is created by this root or by CI. See
 `docs/adr/0014-bounded-public-answer-admission.md` and the linked Google Cloud
 documentation before an explicitly approved deployment.
+
+`allow_unauthenticated_invocation` defaults to `false`. Do not enable it merely
+to make a smoke test convenient: authenticate the first test with an operator
+identity, then enable public invocation only as part of the reviewed edge
+architecture.
 
 ## State and lock files
 
