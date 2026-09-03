@@ -252,16 +252,22 @@ least 24 balanced public cases with unit tests.
 
 ### Commit 3: Retrieval metrics
 
+Status: implemented on `feature/rag-evaluation-harness`.
+
 Add the retrieval runner, exact relevance matching, Hit@K, Context Relevance@K,
 case diagnostics, and metric boundary tests.
 
 ### Commit 4: Answer, citation, and report slice
+
+Status: implemented on `feature/rag-evaluation-harness`.
 
 Run the normal answer policy with discard-only telemetry; calculate abstention,
 coverage, citation, and extractive-support metrics; expose the offline CLI and
 stable JSON report.
 
 ### Commit 5: Baseline and CI gate
+
+Status: implemented on `feature/rag-evaluation-harness`.
 
 Commit the reviewed deterministic local baseline, run it in CI, document
 comparison workflow, perform adversarial review, and update repository and
@@ -281,13 +287,3 @@ The branch is complete when:
 7. CI runs offline with no Google credential or provider call;
 8. existing Python, widget, container, and Terraform checks remain green; and
 9. no cloud resource, deployment, package publication, or billable call occurs.
-
-## Interview framing
-
-The key design statement is:
-
-> “I separated retrieval evaluation from final-answer evaluation. Hit@K tells
-> me whether supporting evidence was found, Context Relevance tells me how much
-> distractor context surrounded it, and abstention/citation metrics tell me
-> whether the policy used that evidence safely. I establish the baseline before
-> tuning, so any claimed improvement is reproducible rather than anecdotal.”

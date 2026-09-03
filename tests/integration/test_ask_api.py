@@ -16,7 +16,7 @@ def test_answered_question_returns_verified_citation_and_redacted_telemetry() ->
     response = client.post(
         "/v1/ask",
         json={
-            "question": "Did they build a FastAPI service on Cloud Run? "
+            "question": "How was Project Atlas packaged? "
             "Contact recruiter@example.com.",
             "sessionId": "browser-session-123",
         },

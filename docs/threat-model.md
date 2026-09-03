@@ -8,8 +8,9 @@ This threat model covers the planned single-tenant FolioAware deployment:
 - approved content and the synchronization CLI;
 - Firestore knowledge, telemetry, synchronization, and insight data;
 - Vertex AI embedding and generation calls;
-- GitHub Actions authenticated with Workload Identity Federation; and
-- the framework-independent widget on the independently hosted portfolio.
+- GitHub Actions authenticated with Workload Identity Federation;
+- the framework-independent widget on the independently hosted portfolio; and
+- the offline evaluation harness, accepted synthetic baseline, and CI gate.
 
 It describes required controls. A control is not considered implemented until
 corresponding code, configuration, and tests exist.
@@ -41,6 +42,7 @@ In priority order, FolioAware must:
 | GitHub and Google identities | Confidentiality, least privilege |
 | Model and application configuration | Integrity, confidentiality where sensitive |
 | Prompts and evaluation policies | Integrity; no embedded secrets |
+| Evaluation suites and accepted baselines | Integrity, reproducibility, public synthetic data only |
 | API capacity and cloud budget | Availability, bounded consumption |
 | Logs and synchronization history | Integrity, redaction, useful attribution |
 
@@ -102,6 +104,9 @@ output remain untrusted even after an approved source has been ingested.
   control.
 - Semantic answer caching is prohibited in the MVP. Provider-managed caches
   cannot establish correctness or evidence freshness.
+- CI rejects changed evaluation inputs or configuration, hard-gate failures,
+  metric regressions, and increases in unsupported answers against the reviewed
+  synthetic baseline.
 
 ## Threat register
 
@@ -128,7 +133,7 @@ Ratings describe risk before the listed controls are implemented.
 | T17 | Sensitive data is placed in source content and published as evidence | Information disclosure | High | Synthetic public fixtures; source review checklist; secret scanning; visibility rules; pre-publication review | Sync fails or source excluded |
 | T18 | Logs contain questions, evidence, prompts, tokens, or vendor payloads | Information disclosure | High | Structured allowlisted logging; no raw bodies by default; sanitization; restricted log access and retention | Record code/metadata only |
 | T19 | Analytics suggests claiming an unsupported skill | Misinformation; excessive agency | High | Fixed recommendation enum; language distinguishes interest from evidence; no knowledge-write port; owner approval | Suggest study/build/leave unavailable |
-| T20 | Configuration drift changes model, threshold, prompt, or index compatibility silently | Tampering; repudiation | Medium | Version all relevant configuration; validate at startup/sync; include versions in safe traces and evaluations | Refuse incompatible index/request |
+| T20 | Configuration drift changes model, threshold, prompt, or index compatibility silently | Tampering; repudiation | Medium | Version all relevant configuration; validate at startup/sync; include versions in safe traces and evaluations; compare suite/content digests and configuration with the accepted baseline in CI | Refuse incompatible index/request or fail CI |
 | T21 | A malformed or malicious API response executes script or creates unsafe navigation in the portfolio | Improper output handling; XSS | High | Exact bounded response validation; plain-text DOM writes; safe citation URL policy; production-bundle browser tests | Generic recoverable widget error |
 | T22 | A cached answer survives corrected, removed, or newly private evidence | Tampering; stale evidence | High | No semantic answer cache in MVP; future cache keys must include knowledge, model, prompt, and policy versions and revalidate citation membership | Bypass or evict cache; retrieve active evidence |
 | T23 | Provider prompt/prefix caching changes retention, region, or privacy assumptions | Information disclosure; supply chain | Medium | Make provider cache use an explicit pre-deployment decision; document data handling, region, TTL, and disable controls; never depend on it for correctness | Disable provider cache |
@@ -234,6 +239,8 @@ Before the local MVP is considered complete, automated tests must cover:
 - malicious widget answer text, unsafe citation URLs, and malformed responses;
 - widget keyboard, responsive, and automated accessibility behavior; and
 - bundle checks for credentials, persistence APIs, unsafe HTML, and size.
+- deterministic offline baseline comparison with zero unsupported answers,
+  complete citation membership, extractive support, and telemetry isolation.
 
 Before cloud deployment, additionally verify IAM permissions, WIF conditions,
 CORS, rate limiting, budgets/alerts, retention, redacted logs, dependency/image
@@ -261,5 +268,5 @@ periodic threat-model revision rather than claims of perfect safety.
 Revisit this document when adding a model tool, web browsing, owner dashboard,
 new content adapter, multi-tenancy, cross-session memory, automated pull
 requests, a new deployment identity, private evidence, answer or provider
-caching, persistent browser storage, or a new data processor.
-
+caching, persistent browser storage, a new data processor, or any change to the
+evaluation suite, threshold, model, chunking, policy, or accepted baseline.
