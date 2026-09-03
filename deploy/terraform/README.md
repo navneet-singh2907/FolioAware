@@ -74,6 +74,33 @@ shortcut because project identity and import requirements must be reviewed.
 Never pass secret payloads to Terraform. Add versions directly to the two
 created Secret Manager containers through an approved operational process.
 
+## Pre-deployment traffic and spend controls
+
+The service passes bounded application admission settings into each process:
+per-client and global fixed-window quotas, retained-client capacity, and an
+answer concurrency cap. The defaults are intentionally below Cloud Run's
+20-request container concurrency so health and owner operations retain room.
+Provider calls time out after 15 seconds, Cloud Run requests after 30 seconds,
+instances scale from zero to at most two, and CPU idles between requests.
+
+The application counters are process-local. Before public traffic, an operator
+must separately review:
+
+1. whether the ASGI server resolves the expected client address without
+   trusting caller-supplied forwarding headers;
+2. a load balancer, serverless NEG, and Cloud Armor rate-based policy for
+   deployment-wide enforcement;
+3. disabling or restricting the default Cloud Run URL so it cannot bypass the
+   edge policy;
+4. billing budgets and alert recipients at meaningful thresholds; and
+5. whether an eligible spend-cap budget is appropriate for Cloud Run and Vertex
+   AI, including the availability impact when the cap pauses service usage.
+
+An alerts-only budget sends notifications but does not cap spending. None of
+these external resources is created by this root or by CI. See
+`docs/adr/0014-bounded-public-answer-admission.md` and the linked Google Cloud
+documentation before an explicitly approved deployment.
+
 ## State and lock files
 
 - Commit `.terraform.lock.hcl`: it records selected provider checksums and makes

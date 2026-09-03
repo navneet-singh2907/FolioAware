@@ -102,6 +102,7 @@ cloud phase.
 11. [ADR-0011: Production Google knowledge synchronization](adr/0011-production-google-knowledge-sync.md)
 12. [ADR-0012: Framework-independent portfolio widget](adr/0012-framework-independent-portfolio-widget.md)
 13. [ADR-0013: Repository-native, two-plane evaluation harness](adr/0013-repository-native-evaluation-harness.md)
+14. [ADR-0014: Bounded public answer admission](adr/0014-bounded-public-answer-admission.md)
 
 ## Current platform references
 

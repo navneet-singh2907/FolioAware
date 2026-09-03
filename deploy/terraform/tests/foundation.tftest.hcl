@@ -82,6 +82,69 @@ run "service_has_cost_and_safety_guards" {
     ]) == jsonencode(["https://portfolio.example"])
     error_message = "Cloud Run must receive the exact browser-origin allowlist."
   }
+
+  assert {
+    condition = one([
+      for environment_variable in google_cloud_run_v2_service.api[0].template[0].containers[0].env :
+      environment_variable.value if environment_variable.name == "FOLIOAWARE_RATE_LIMIT_PER_CLIENT_REQUESTS"
+    ]) == "10"
+    error_message = "Cloud Run must configure the per-client application quota."
+  }
+
+  assert {
+    condition = one([
+      for environment_variable in google_cloud_run_v2_service.api[0].template[0].containers[0].env :
+      environment_variable.value if environment_variable.name == "FOLIOAWARE_RATE_LIMIT_GLOBAL_REQUESTS"
+    ]) == "100"
+    error_message = "Cloud Run must configure the global application quota."
+  }
+
+  assert {
+    condition = one([
+      for environment_variable in google_cloud_run_v2_service.api[0].template[0].containers[0].env :
+      environment_variable.value if environment_variable.name == "FOLIOAWARE_RATE_LIMIT_WINDOW_SECONDS"
+    ]) == "60"
+    error_message = "Cloud Run must configure the application quota window."
+  }
+
+  assert {
+    condition = one([
+      for environment_variable in google_cloud_run_v2_service.api[0].template[0].containers[0].env :
+      environment_variable.value if environment_variable.name == "FOLIOAWARE_RATE_LIMIT_MAX_CLIENTS"
+    ]) == "10000"
+    error_message = "Cloud Run must configure the retained client-bucket bound."
+  }
+
+  assert {
+    condition = one([
+      for environment_variable in google_cloud_run_v2_service.api[0].template[0].containers[0].env :
+      environment_variable.value if environment_variable.name == "FOLIOAWARE_ANSWER_CONCURRENCY_LIMIT"
+    ]) == "4"
+    error_message = "Cloud Run must configure the application concurrency cap."
+  }
+}
+
+run "invalid_rate_limit_relationship_is_rejected" {
+  command = plan
+
+  variables {
+    deploy_service                 = true
+    container_image                = "us-central1-docker.pkg.dev/example-folio-aware-project/folio-aware/api@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+    rate_limit_per_client_requests = 11
+    rate_limit_global_requests     = 10
+  }
+
+  expect_failures = [google_cloud_run_v2_service.api[0]]
+}
+
+run "fractional_rate_limit_value_is_rejected" {
+  command = plan
+
+  variables {
+    rate_limit_window_seconds = 60.5
+  }
+
+  expect_failures = [var.rate_limit_window_seconds]
 }
 
 run "insecure_browser_origins_are_rejected" {

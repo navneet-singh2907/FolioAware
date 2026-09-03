@@ -166,6 +166,18 @@ origins must use HTTPS, credentials are disabled, and the middleware permits
 only `POST` with `Content-Type`. CORS is a browser policy, not authentication,
 rate limiting, bot protection, or a spending limit.
 
+`POST /v1/ask` has dependency-free in-process admission control. Defaults allow
+10 requests per ASGI-resolved client and 100 requests globally per 60-second
+window, retain at most 10,000 client buckets, and admit at most four concurrent
+answers per process. Quota exhaustion returns `429 RATE_LIMITED`; saturated
+answer capacity returns `503 ANSWER_CAPACITY_EXCEEDED`; both include
+`Retry-After`. Health, preflight, and owner-report requests use separate paths.
+
+These counters are intentionally process-local and do not replace a trusted
+reverse-proxy configuration, deployment-wide edge rate limiting, Cloud Run
+instance/concurrency caps, or billing controls. See
+[ADR-0014](docs/adr/0014-bounded-public-answer-admission.md).
+
 The Google adapters intentionally preserve the same application ports:
 
 - Vertex embeddings select document/query task types and disable silent input
@@ -282,6 +294,7 @@ has a separate composition root and how terminal history failures are handled.
 - [RAG evaluation harness plan](docs/evaluation-harness-plan.md)
 - [Evaluation architecture decision](docs/adr/0013-repository-native-evaluation-harness.md)
 - [Accepted synthetic evaluation baseline](docs/evaluation-baseline.md)
+- [Public answer admission decision](docs/adr/0014-bounded-public-answer-admission.md)
 - [Portable approved-source schema](schemas/knowledge-source.schema.json)
 
 No real portfolio content or visitor analytics are included. No cloud resource,

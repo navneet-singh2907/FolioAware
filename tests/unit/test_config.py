@@ -8,6 +8,24 @@ def test_default_retrieval_threshold_matches_accepted_baseline() -> None:
     assert Settings().retrieval_distance_threshold == 0.72
 
 
+def test_default_public_answer_limits_are_bounded() -> None:
+    settings = Settings()
+
+    assert settings.rate_limit_per_client_requests == 10
+    assert settings.rate_limit_global_requests == 100
+    assert settings.rate_limit_window_seconds == 60
+    assert settings.rate_limit_max_clients == 10_000
+    assert settings.answer_concurrency_limit == 4
+
+
+def test_global_request_limit_cannot_be_lower_than_client_limit() -> None:
+    with pytest.raises(ValidationError, match="global request limit"):
+        Settings(
+            rate_limit_per_client_requests=10,
+            rate_limit_global_requests=9,
+        )
+
+
 def test_production_rejects_development_session_secret() -> None:
     with pytest.raises(ValidationError, match="at least 32 characters"):
         Settings(environment="production")

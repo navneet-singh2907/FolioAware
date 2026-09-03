@@ -24,6 +24,11 @@ class Settings(BaseSettings):
     content_root: Path = Path("examples/synthetic-portfolio")
     retrieval_distance_threshold: float = Field(default=0.72, ge=0, le=2)
     retrieval_top_k: int = Field(default=5, ge=1, le=5)
+    rate_limit_per_client_requests: int = Field(default=10, ge=1, le=1_000)
+    rate_limit_global_requests: int = Field(default=100, ge=1, le=10_000)
+    rate_limit_window_seconds: int = Field(default=60, ge=1, le=3_600)
+    rate_limit_max_clients: int = Field(default=10_000, ge=100, le=100_000)
+    answer_concurrency_limit: int = Field(default=4, ge=1, le=100)
     telemetry_retention_days: int = Field(default=90, ge=1, le=365)
     insight_rules_path: Path = Path("examples/synthetic-portfolio/insight-topics.yaml")
     insight_min_question_count: int = Field(default=2, ge=2, le=100)
@@ -99,6 +104,10 @@ class Settings(BaseSettings):
         ):
             raise ValueError(
                 "Google backend requires google_cloud_project and generation_model"
+            )
+        if self.rate_limit_global_requests < self.rate_limit_per_client_requests:
+            raise ValueError(
+                "global request limit cannot be lower than per-client request limit"
             )
         for origin in self.allowed_origins:
             parsed = urlsplit(origin)
