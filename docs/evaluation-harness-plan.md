@@ -245,6 +245,8 @@ Record ADR-0013 and this plan. No evaluator behavior or dependency changes.
 
 ### Commit 2: Typed suite and synthetic cases
 
+Status: implemented on `feature/rag-evaluation-harness`.
+
 Add strict evaluation models, safe loader, source-reference validation, and at
 least 24 balanced public cases with unit tests.
 

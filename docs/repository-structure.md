@@ -38,7 +38,7 @@ folio-aware/
 │   ├── threat-model.md                     # current
 │   └── mvp-plan.md                         # current
 ├── evals/
-│   ├── fixtures/                           # planned: versioned synthetic suites
+│   ├── fixtures/                           # current: versioned synthetic suites
 │   └── baselines/                          # planned: accepted deterministic reports
 ├── examples/
 │   └── synthetic-portfolio/                # initial: public synthetic content
@@ -72,6 +72,7 @@ folio-aware/
 │       │   ├── local/                      # current: deterministic tests/demo
 │       │   └── google/                     # current: Firestore and Vertex AI
 │       ├── ingestion/                      # initial: parse, validate, chunk, hash
+│       ├── evaluation/                     # current: strict public suite contracts
 │       ├── security/                       # initial: redaction and input limits
 │       ├── cli/                            # initial: sync command entry point
 │       ├── analytics/                      # current: topic/intent rules
