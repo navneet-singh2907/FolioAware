@@ -177,6 +177,8 @@ resource "google_cloud_run_v2_service" "api" {
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
   count = var.deploy_service && var.enable_public_edge && var.allow_unauthenticated_invocation ? 1 : 0
 
+  depends_on = [google_compute_global_forwarding_rule.https]
+
   project  = var.project_id
   location = google_cloud_run_v2_service.api[0].location
   name     = google_cloud_run_v2_service.api[0].name
