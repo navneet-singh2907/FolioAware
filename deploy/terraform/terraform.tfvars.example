@@ -29,6 +29,17 @@ deploy_service = false
 # verify the approved edge controls that prevent direct Cloud Run URL bypass.
 allow_unauthenticated_invocation = false
 
+# Public edge phase: the load balancer and Cloud Armor must exist before the
+# Cloud Run service accepts unauthenticated traffic. Add the returned
+# public_edge_ip as an A record for api_domain, then wait for the managed TLS
+# certificate to become ACTIVE.
+enable_public_edge = false
+api_domain        = null
+
+# Cloud Armor applies this threshold independently to each source IP.
+edge_rate_limit_per_ip_requests = 30
+edge_rate_limit_window_seconds  = 60
+
 # Phase two example:
 # deploy_service = true
 # container_image = "us-central1-docker.pkg.dev/example-folio-aware-project/folio-aware/api@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"

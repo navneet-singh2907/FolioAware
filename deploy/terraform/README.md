@@ -37,10 +37,44 @@ breaks that dependency cycle:
    `allowed_origins` to the exact independently hosted portfolio origins whose
    browser JavaScript may read cross-origin API responses.
 4. Public traffic phase: only after approved edge controls prevent direct-URL
-   bypass, explicitly set `allow_unauthenticated_invocation = true` to grant
-   `roles/run.invoker` to `allUsers`.
+   bypass, set `enable_public_edge = true`, provide `api_domain`, and explicitly
+   set `allow_unauthenticated_invocation = true`. Terraform then restricts
+   Cloud Run ingress to the load-balancer path and grants `roles/run.invoker`
+   to `allUsers` only behind that network restriction.
 
 This is a deliberate safety latch, not a feature flag used at runtime.
+
+## Public HTTPS edge
+
+The optional public edge provisions a global static IPv4 address, a serverless
+NEG, a global external Application Load Balancer, a Google-managed TLS
+certificate, an HTTP-to-HTTPS redirect, and a Cloud Armor per-IP throttle. These
+resources are billable even when Cloud Run scales to zero.
+
+Configure the adopter-specific values only in ignored `terraform.tfvars`:
+
+```hcl
+allowed_origins                  = ["https://portfolio.example", "https://www.portfolio.example"]
+enable_public_edge               = true
+api_domain                       = "api.portfolio.example"
+allow_unauthenticated_invocation = true
+```
+
+After reviewing and applying the saved Terraform plan:
+
+1. Read the `public_edge_ip` output.
+2. In the authoritative DNS provider, create an `A` record for the API hostname
+   pointing to that exact IPv4 address. Do not alter the portfolio's existing
+   apex or `www` records.
+3. Wait until the Google-managed certificate reports `ACTIVE`; DNS and
+   certificate provisioning are asynchronous.
+4. Verify `https://api.portfolio.example/healthz` returns `200`.
+5. Verify a direct request to the default `run.app` URL is rejected and does
+   not reach the application logs.
+
+The Cloud Armor threshold is controlled by
+`edge_rate_limit_per_ip_requests` and `edge_rate_limit_window_seconds`. Keep the
+application admission controls enabled as defense in depth.
 
 ## Review and offline validation
 
@@ -92,10 +126,10 @@ must separately review:
 
 1. whether the ASGI server resolves the expected client address without
    trusting caller-supplied forwarding headers;
-2. a load balancer, serverless NEG, and Cloud Armor rate-based policy for
-   deployment-wide enforcement;
-3. disabling or restricting the default Cloud Run URL so it cannot bypass the
-   edge policy;
+2. enabling and verifying the Terraform-managed load balancer, serverless NEG,
+   and Cloud Armor rate-based policy for deployment-wide enforcement;
+3. confirming the direct Cloud Run URL is restricted and cannot bypass the edge
+   policy;
 4. billing budgets and alert recipients at meaningful thresholds; and
 5. whether an eligible spend-cap budget is appropriate for Cloud Run and Vertex
    AI, including the availability impact when the cap pauses service usage.
@@ -105,10 +139,10 @@ these external resources is created by this root or by CI. See
 `docs/adr/0014-bounded-public-answer-admission.md` and the linked Google Cloud
 documentation before an explicitly approved deployment.
 
-`allow_unauthenticated_invocation` defaults to `false`. Do not enable it merely
-to make a smoke test convenient: authenticate the first test with an operator
-identity, then enable public invocation only as part of the reviewed edge
-architecture.
+`allow_unauthenticated_invocation` and `enable_public_edge` both default to
+`false`. Configuration checks reject unauthenticated invocation without the
+edge. Authenticate the first test with the deploy identity, then enable public
+invocation only as part of the reviewed edge architecture.
 
 ## State and lock files
 

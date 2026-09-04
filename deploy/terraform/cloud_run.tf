@@ -5,7 +5,7 @@ resource "google_cloud_run_v2_service" "api" {
   name                = var.service_name
   location            = var.region
   description         = "A portfolio agent that stays current."
-  ingress             = "INGRESS_TRAFFIC_ALL"
+  ingress             = var.enable_public_edge ? "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER" : "INGRESS_TRAFFIC_ALL"
   deletion_protection = true
 
   scaling {
@@ -175,11 +175,21 @@ resource "google_cloud_run_v2_service" "api" {
 }
 
 resource "google_cloud_run_v2_service_iam_member" "public_invoker" {
-  count = var.deploy_service && var.allow_unauthenticated_invocation ? 1 : 0
+  count = var.deploy_service && var.enable_public_edge && var.allow_unauthenticated_invocation ? 1 : 0
 
   project  = var.project_id
   location = google_cloud_run_v2_service.api[0].location
   name     = google_cloud_run_v2_service.api[0].name
   role     = "roles/run.invoker"
   member   = "allUsers"
+}
+
+resource "google_cloud_run_v2_service_iam_member" "deploy_invoker" {
+  count = var.deploy_service ? 1 : 0
+
+  project  = var.project_id
+  location = google_cloud_run_v2_service.api[0].location
+  name     = google_cloud_run_v2_service.api[0].name
+  role     = "roles/run.invoker"
+  member   = "serviceAccount:${google_service_account.deploy.email}"
 }
