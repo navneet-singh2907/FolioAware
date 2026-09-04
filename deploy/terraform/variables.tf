@@ -112,6 +112,53 @@ variable "allow_unauthenticated_invocation" {
   default     = false
 }
 
+variable "enable_public_edge" {
+  description = "Whether to provision the HTTPS load balancer, Cloud Armor policy, and serverless NEG that form the only public ingress path."
+  type        = bool
+  default     = false
+}
+
+variable "api_domain" {
+  description = "DNS hostname served by the public HTTPS edge, without a scheme or path. Required when enable_public_edge is true."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition = var.api_domain == null || (
+      trimspace(var.api_domain) == var.api_domain &&
+      can(regex("^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)+$", var.api_domain))
+    )
+    error_message = "api_domain must be a lowercase DNS hostname without a scheme, port, path, or wildcard."
+  }
+}
+
+variable "edge_rate_limit_per_ip_requests" {
+  description = "Maximum requests allowed by Cloud Armor per source IP during one edge rate-limit window."
+  type        = number
+  default     = 30
+
+  validation {
+    condition = (
+      floor(var.edge_rate_limit_per_ip_requests) == var.edge_rate_limit_per_ip_requests &&
+      var.edge_rate_limit_per_ip_requests >= 1 &&
+      var.edge_rate_limit_per_ip_requests <= 10000
+    )
+    error_message = "edge_rate_limit_per_ip_requests must be a whole number between 1 and 10000."
+  }
+}
+
+variable "edge_rate_limit_window_seconds" {
+  description = "Cloud Armor per-IP rate-limit interval in seconds."
+  type        = number
+  default     = 60
+
+  validation {
+    condition     = contains([10, 30, 60, 120, 180, 240, 300, 600, 900, 1200, 1800, 2700, 3600], var.edge_rate_limit_window_seconds)
+    error_message = "edge_rate_limit_window_seconds must be a Cloud Armor-supported interval between 10 and 3600 seconds."
+  }
+}
+
 variable "deploy_workflow_ref" {
   description = "Exact GitHub OIDC job_workflow_ref allowed to impersonate the deploy identity."
   type        = string

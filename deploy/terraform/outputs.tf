@@ -8,6 +8,16 @@ output "cloud_run_service_uri" {
   value       = var.deploy_service ? google_cloud_run_v2_service.api[0].uri : null
 }
 
+output "public_api_domain" {
+  description = "Public FolioAware API hostname, or null while the public edge is disabled."
+  value       = var.enable_public_edge ? var.api_domain : null
+}
+
+output "public_edge_ip" {
+  description = "IPv4 address to configure as the api_domain DNS A record, or null while the public edge is disabled."
+  value       = var.enable_public_edge ? google_compute_global_address.public_edge[0].address : null
+}
+
 output "deploy_service_account" {
   description = "Service account impersonated only by the deploy WIF pool."
   value       = google_service_account.deploy.email

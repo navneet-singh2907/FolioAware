@@ -9,17 +9,25 @@ mock_provider "google" {
 }
 
 variables {
-  project_id                 = "example-folio-aware-project"
-  github_repository_id       = "123456789"
-  github_repository_owner_id = "987654321"
-  generation_model           = "gemini-2.5-flash"
-  allowed_origins            = ["https://portfolio.example"]
-  deploy_workflow_ref        = "example-org/folio-aware/.github/workflows/deploy-reusable.yml@0123456789abcdef0123456789abcdef01234567"
-  sync_workflow_ref          = "example-org/folio-aware/.github/workflows/sync-reusable.yml@0123456789abcdef0123456789abcdef01234567"
+  project_id                       = "example-folio-aware-project"
+  github_repository_id             = "123456789"
+  github_repository_owner_id       = "987654321"
+  generation_model                 = "gemini-2.5-flash"
+  allowed_origins                  = ["https://portfolio.example"]
+  deploy_workflow_ref              = "example-org/folio-aware/.github/workflows/deploy-reusable.yml@0123456789abcdef0123456789abcdef01234567"
+  sync_workflow_ref                = "example-org/folio-aware/.github/workflows/sync-reusable.yml@0123456789abcdef0123456789abcdef01234567"
+  deploy_service                   = false
+  enable_public_edge               = false
+  allow_unauthenticated_invocation = false
+  api_domain                       = null
 }
 
 run "foundation_is_safe_by_default" {
   command = plan
+
+  variables {
+    deploy_service = false
+  }
 
   assert {
     condition     = length(google_cloud_run_v2_service.api) == 0
@@ -81,6 +89,16 @@ run "service_has_cost_and_safety_guards" {
   }
 
   assert {
+    condition     = length(google_cloud_run_v2_service_iam_member.deploy_invoker) == 1 && google_cloud_run_v2_service_iam_member.deploy_invoker[0].role == "roles/run.invoker"
+    error_message = "The deploy identity must be able to run authenticated private smoke tests."
+  }
+
+  assert {
+    condition     = length(google_compute_global_address.public_edge) == 0
+    error_message = "Public edge resources must remain disabled by default."
+  }
+
+  assert {
     condition = one([
       for environment_variable in google_cloud_run_v2_service.api[0].template[0].containers[0].env :
       environment_variable.value if environment_variable.name == "FOLIOAWARE_ALLOWED_ORIGINS"
@@ -134,6 +152,8 @@ run "public_invocation_requires_explicit_opt_in" {
 
   variables {
     deploy_service                   = true
+    enable_public_edge               = true
+    api_domain                       = "api.portfolio.example"
     allow_unauthenticated_invocation = true
     container_image                  = "us-central1-docker.pkg.dev/example-folio-aware-project/folio-aware/api@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
   }
@@ -142,6 +162,36 @@ run "public_invocation_requires_explicit_opt_in" {
     condition     = google_cloud_run_v2_service_iam_member.public_invoker[0].member == "allUsers"
     error_message = "Explicit public invocation must grant the Cloud Run invoker role to allUsers."
   }
+
+  assert {
+    condition     = google_cloud_run_v2_service.api[0].ingress == "INGRESS_TRAFFIC_INTERNAL_LOAD_BALANCER"
+    error_message = "Public deployments must restrict direct Cloud Run ingress to the load-balancer path."
+  }
+
+  assert {
+    condition = anytrue([
+      for rule in google_compute_security_policy.public_edge[0].rule :
+      rule.action == "throttle"
+    ])
+    error_message = "The public edge must enforce a Cloud Armor rate limit."
+  }
+
+  assert {
+    condition     = toset(google_compute_managed_ssl_certificate.api[0].managed[0].domains) == toset(["api.portfolio.example"])
+    error_message = "The managed certificate must cover only the configured API hostname."
+  }
+}
+
+run "unauthenticated_invocation_without_edge_is_rejected" {
+  command = plan
+
+  variables {
+    deploy_service                   = true
+    allow_unauthenticated_invocation = true
+    container_image                  = "us-central1-docker.pkg.dev/example-folio-aware-project/folio-aware/api@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+
+  expect_failures = [check.public_edge_prerequisites]
 }
 
 run "invalid_rate_limit_relationship_is_rejected" {

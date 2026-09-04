@@ -3,6 +3,7 @@ locals {
     "aiplatform.googleapis.com",
     "artifactregistry.googleapis.com",
     "cloudresourcemanager.googleapis.com",
+    "compute.googleapis.com",
     "firestore.googleapis.com",
     "iam.googleapis.com",
     "iamcredentials.googleapis.com",
@@ -32,6 +33,22 @@ locals {
     "attribute.repository_id"       = "assertion.repository_id"
     "attribute.repository_owner_id" = "assertion.repository_owner_id"
     "attribute.job_workflow_ref"    = "assertion.job_workflow_ref"
+  }
+}
+
+check "public_edge_prerequisites" {
+  assert {
+    condition = !var.enable_public_edge || (
+      var.deploy_service &&
+      var.allow_unauthenticated_invocation &&
+      var.api_domain != null
+    )
+    error_message = "enable_public_edge=true requires deploy_service=true, allow_unauthenticated_invocation=true, and api_domain."
+  }
+
+  assert {
+    condition     = !var.allow_unauthenticated_invocation || var.enable_public_edge
+    error_message = "Unauthenticated invocation is allowed only behind the approved public edge."
   }
 }
 
