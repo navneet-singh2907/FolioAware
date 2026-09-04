@@ -18,6 +18,7 @@ variables {
   sync_workflow_ref                = "example-org/folio-aware/.github/workflows/sync-reusable.yml@0123456789abcdef0123456789abcdef01234567"
   deploy_service                   = false
   enable_public_edge               = false
+  enable_cloud_armor               = true
   allow_unauthenticated_invocation = false
   api_domain                       = null
 }
@@ -192,6 +193,29 @@ run "unauthenticated_invocation_without_edge_is_rejected" {
   }
 
   expect_failures = [check.public_edge_prerequisites]
+}
+
+run "public_edge_supports_documented_quota_fallback" {
+  command = plan
+
+  variables {
+    deploy_service                   = true
+    enable_public_edge               = true
+    enable_cloud_armor               = false
+    api_domain                       = "api.portfolio.example"
+    allow_unauthenticated_invocation = true
+    container_image                  = "us-central1-docker.pkg.dev/example-folio-aware-project/folio-aware/api@sha256:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef"
+  }
+
+  assert {
+    condition     = length(google_compute_security_policy.public_edge) == 0
+    error_message = "The quota fallback must omit the unavailable Cloud Armor policy."
+  }
+
+  assert {
+    condition     = google_compute_backend_service.public_edge[0].security_policy == null
+    error_message = "The quota fallback must leave the load-balancer backend without a missing policy reference."
+  }
 }
 
 run "invalid_rate_limit_relationship_is_rejected" {

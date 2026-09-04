@@ -29,7 +29,7 @@ resource "google_compute_region_network_endpoint_group" "cloud_run" {
 }
 
 resource "google_compute_security_policy" "public_edge" {
-  count = var.enable_public_edge ? 1 : 0
+  count = var.enable_public_edge && var.enable_cloud_armor ? 1 : 0
 
   project     = var.project_id
   name        = "${var.service_name}-edge-policy"
@@ -84,7 +84,7 @@ resource "google_compute_backend_service" "public_edge" {
   name                  = "${var.service_name}-edge-backend"
   protocol              = "HTTP"
   load_balancing_scheme = "EXTERNAL_MANAGED"
-  security_policy       = google_compute_security_policy.public_edge[0].id
+  security_policy       = var.enable_cloud_armor ? google_compute_security_policy.public_edge[0].id : null
 
   backend {
     group = google_compute_region_network_endpoint_group.cloud_run[0].id
