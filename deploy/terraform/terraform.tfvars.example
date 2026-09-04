@@ -34,6 +34,7 @@ allow_unauthenticated_invocation = false
 # public_edge_ip as an A record for api_domain, then wait for the managed TLS
 # certificate to become ACTIVE.
 enable_public_edge = false
+enable_cloud_armor = true
 api_domain        = null
 
 # Cloud Armor applies this threshold independently to each source IP.

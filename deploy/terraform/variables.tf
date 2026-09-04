@@ -113,9 +113,15 @@ variable "allow_unauthenticated_invocation" {
 }
 
 variable "enable_public_edge" {
-  description = "Whether to provision the HTTPS load balancer, Cloud Armor policy, and serverless NEG that form the only public ingress path."
+  description = "Whether to provision the HTTPS load balancer and serverless NEG that form the only public ingress path."
   type        = bool
   default     = false
+}
+
+variable "enable_cloud_armor" {
+  description = "Whether to attach a Cloud Armor per-IP throttle to the public edge. Disable only when the project has no security-policy quota, and keep application admission controls enabled."
+  type        = bool
+  default     = true
 }
 
 variable "api_domain" {

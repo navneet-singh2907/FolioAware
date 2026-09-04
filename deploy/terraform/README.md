@@ -51,11 +51,19 @@ NEG, a global external Application Load Balancer, a Google-managed TLS
 certificate, an HTTP-to-HTTPS redirect, and a Cloud Armor per-IP throttle. These
 resources are billable even when Cloud Run scales to zero.
 
+Cloud Armor is enabled by default. If Google assigns the project a security
+policy quota of zero and denies an increase, set `enable_cloud_armor = false`
+and keep the application request and concurrency limits enabled. The load
+balancer-only Cloud Run ingress restriction still prevents direct-URL bypass;
+the application limits become the active abuse-control layer until the quota is
+available.
+
 Configure the adopter-specific values only in ignored `terraform.tfvars`:
 
 ```hcl
 allowed_origins                  = ["https://portfolio.example", "https://www.portfolio.example"]
 enable_public_edge               = true
+enable_cloud_armor               = true
 api_domain                       = "api.portfolio.example"
 allow_unauthenticated_invocation = true
 ```
