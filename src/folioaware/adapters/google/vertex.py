@@ -69,7 +69,9 @@ def create_vertex_client(
         http_options=types.HttpOptions(
             api_version="v1",
             timeout=timeout_seconds * 1000,
-            retry_options=types.HttpRetryOptions(attempts=1),
+            # Google recommends no more than two retries for transient model
+            # overloads. The SDK supplies exponential backoff and jitter.
+            retry_options=types.HttpRetryOptions(attempts=3),
         ),
     )
 

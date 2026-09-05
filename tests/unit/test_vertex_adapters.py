@@ -232,7 +232,7 @@ def test_vertex_client_factory_uses_stable_api_and_bounded_requests(
     assert http_options.api_version == "v1"
     assert http_options.timeout == 12_000
     assert http_options.retry_options is not None
-    assert http_options.retry_options.attempts == 1
+    assert http_options.retry_options.attempts == 3
 
 
 def test_vertex_client_factory_translates_adc_failure_without_details(
