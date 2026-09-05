@@ -43,6 +43,11 @@ on:
         required: false
         default: production
         type: string
+      healthcheck_url:
+        description: Optional edge-aware health URL; defaults to the direct Cloud Run URL
+        required: false
+        default: ""
+        type: string
 
 permissions:
   contents: read
@@ -114,15 +119,23 @@ jobs:
             --region "$REGION" \
             --quiet
 
-      - name: Verify public health endpoint
+      - name: Verify health endpoint
         env:
+          HEALTHCHECK_URL: ${{ inputs.healthcheck_url }}
           PROJECT_ID: ${{ inputs.project_id }}
           REGION: ${{ inputs.region }}
           SERVICE_NAME: ${{ inputs.service_name }}
         run: |
-          service_url="$(gcloud run services describe "$SERVICE_NAME" \
-            --project "$PROJECT_ID" \
-            --region "$REGION" \
-            --format='value(status.url)')"
+          health_url="$HEALTHCHECK_URL"
+          if [[ -z "$health_url" ]]; then
+            service_url="$(gcloud run services describe "$SERVICE_NAME" \
+              --project "$PROJECT_ID" \
+              --region "$REGION" \
+              --format='value(status.url)')"
+            health_url="${service_url}/healthz"
+          elif [[ ! "$health_url" =~ ^https://[^[:space:]]+/healthz$ ]]; then
+            echo "healthcheck_url must be an HTTPS /healthz URL" >&2
+            exit 1
+          fi
           curl --fail --retry 5 --retry-all-errors --retry-delay 2 \
-            "${service_url}/healthz"
+            "$health_url"
