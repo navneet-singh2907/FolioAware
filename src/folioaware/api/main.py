@@ -1,5 +1,6 @@
 """FastAPI application composition root."""
 
+import logging
 from collections.abc import Awaitable, Callable
 from hmac import compare_digest
 from typing import Annotated
@@ -26,6 +27,8 @@ from folioaware.domain.exceptions import (
     ModelUnavailableError,
 )
 from folioaware.security import PublicRequestGuard
+
+LOGGER = logging.getLogger(__name__)
 
 
 def _problem(*, request_id: str, status: int, code: str, title: str) -> JSONResponse:
@@ -191,6 +194,7 @@ def create_app(
     async def invalid_model_output(
         _request: Request, _error: InvalidModelOutputError
     ) -> JSONResponse:
+        LOGGER.error("invalid_model_output: %s", _error)
         return _problem(
             request_id=next_request_id(),
             status=500,

@@ -36,6 +36,16 @@ class InvalidGenerator:
                 answer=evidence.content,
                 evidence_ids=(evidence.evidence_id, evidence.evidence_id),
             )
+        if self.mode == "extract":
+            answer = next(
+                line.strip()
+                for line in evidence.content.splitlines()
+                if line.strip() and not line.lstrip().startswith("#")
+            )
+            return AnswerCandidate(
+                answer=answer,
+                evidence_ids=(evidence.evidence_id,),
+            )
         return AnswerCandidate(
             answer="An invented claim that is not present in the evidence.",
             evidence_ids=(evidence.evidence_id,),
@@ -72,6 +82,16 @@ def test_rejects_untrusted_generator_output(mode: str) -> None:
 
     with pytest.raises(InvalidModelOutputError):
         service.execute(question="Did they use FastAPI?", session_id=None)
+
+
+def test_accepts_verbatim_extract_from_larger_cited_evidence() -> None:
+    service = build_service(InvalidGenerator("extract"))
+
+    result = service.execute(question="Did they use FastAPI?", session_id=None)
+
+    assert result.answer_status == "answered"
+    assert result.answer
+    assert result.citations
 
 
 def test_telemetry_failure_does_not_break_a_verified_answer() -> None:
