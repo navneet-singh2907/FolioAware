@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import time
+from collections.abc import Callable
 from enum import Enum
 
 import google.auth
@@ -119,12 +121,21 @@ class VertexEmbeddingProvider:
         client: genai.Client,
         model: str,
         dimensions: int,
+        minimum_interval_seconds: float = 0,
+        monotonic: Callable[[], float] = time.monotonic,
+        sleeper: Callable[[float], None] = time.sleep,
     ) -> None:
         if not 1 <= dimensions <= 2048:
             raise ValueError("embedding dimensions must be between 1 and 2048")
+        if minimum_interval_seconds < 0:
+            raise ValueError("minimum embedding interval cannot be negative")
         self._client = client
         self._model = model
         self._dimensions = dimensions
+        self._minimum_interval_seconds = minimum_interval_seconds
+        self._monotonic = monotonic
+        self._sleeper = sleeper
+        self._last_request_at: float | None = None
 
     @property
     def model(self) -> str:
@@ -141,6 +152,7 @@ class VertexEmbeddingProvider:
         return self._embed(text, EmbeddingTaskType.RETRIEVAL_QUERY)
 
     def _embed(self, text: str, task_type: EmbeddingTaskType) -> Embedding:
+        self._pace_request()
         try:
             response = self._client.models.embed_content(
                 model=self.model,
@@ -169,6 +181,15 @@ class VertexEmbeddingProvider:
             )
         except ValidationError as error:
             raise InvalidModelOutputError("embedding response is invalid") from error
+
+    def _pace_request(self) -> None:
+        now = self._monotonic()
+        if self._last_request_at is not None:
+            delay = self._minimum_interval_seconds - (now - self._last_request_at)
+            if delay > 0:
+                self._sleeper(delay)
+                now = self._monotonic()
+        self._last_request_at = now
 
 
 class VertexGenerationProvider:

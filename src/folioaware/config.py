@@ -137,6 +137,7 @@ class SyncSettings(BaseSettings):
     firestore_database: str = Field(default="(default)", min_length=1)
     embedding_model: str = Field(default="gemini-embedding-001", min_length=1)
     embedding_dimensions: int = Field(default=768, ge=1, le=2048)
+    embedding_min_interval_seconds: float = Field(default=0, ge=0, le=60)
     google_request_timeout_seconds: int = Field(default=15, ge=1, le=60)
 
     @model_validator(mode="after")

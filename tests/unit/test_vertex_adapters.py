@@ -124,6 +124,48 @@ def test_vertex_embedding_rejects_wrong_vector_dimensions() -> None:
         provider.embed_query("question")
 
 
+def test_vertex_embeddings_enforce_configured_minimum_interval() -> None:
+    models = FakeModels(
+        embedding_response=types.EmbedContentResponse(
+            embeddings=[types.ContentEmbedding(values=[0.1, 0.2, 0.3])]
+        )
+    )
+    current_time = [100.0]
+    delays: list[float] = []
+
+    def monotonic() -> float:
+        return current_time[0]
+
+    def sleeper(delay: float) -> None:
+        delays.append(delay)
+        current_time[0] += delay
+
+    provider = VertexEmbeddingProvider(
+        client=as_client(models),
+        model="embedding-model",
+        dimensions=3,
+        minimum_interval_seconds=13,
+        monotonic=monotonic,
+        sleeper=sleeper,
+    )
+
+    provider.embed_document("first")
+    current_time[0] += 5
+    provider.embed_document("second")
+
+    assert delays == [8]
+
+
+def test_vertex_embeddings_reject_negative_minimum_interval() -> None:
+    with pytest.raises(ValueError, match="cannot be negative"):
+        VertexEmbeddingProvider(
+            client=as_client(FakeModels()),
+            model="embedding-model",
+            dimensions=3,
+            minimum_interval_seconds=-1,
+        )
+
+
 def test_vertex_generation_requests_structured_grounded_output() -> None:
     models = FakeModels(
         generation_response=TextResponse(
