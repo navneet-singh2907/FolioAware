@@ -290,7 +290,9 @@ class FirestoreKnowledgeRepository:
         candidate_reference = self._client.collection(INDEX_VERSIONS).document(
             _version_document_id(candidate_version)
         )
-        try:
+
+        @firestore_v1.transactional
+        def activate_in_transaction(transaction: Any) -> None:
             pointer_snapshot = pointer_reference.get(
                 transaction=transaction, timeout=self._timeout_seconds
             )
@@ -332,7 +334,9 @@ class FirestoreKnowledgeRepository:
                 pointer_reference,
                 {"active_index_version": candidate_version},
             )
-            transaction.commit(timeout=self._timeout_seconds)
+
+        try:
+            activate_in_transaction(transaction)
         except SyncConflictError:
             raise
         except (Aborted, Conflict) as error:
