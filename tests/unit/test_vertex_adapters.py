@@ -204,15 +204,17 @@ def test_vertex_generation_requests_structured_grounded_output() -> None:
     "text",
     [None, "not-json", "[]", '{"selectionIndex":true}', '{"selectionIndex":1}'],
 )
-def test_vertex_generation_rejects_invalid_output(text: str | None) -> None:
+def test_vertex_generation_falls_back_for_invalid_output(text: str | None) -> None:
     provider = VertexGenerationProvider(
         client=as_client(FakeModels(generation_response=TextResponse(text))),
         model="generation-model",
         max_output_tokens=256,
     )
 
-    with pytest.raises(InvalidModelOutputError):
-        provider.generate(generation_request())
+    candidate = provider.generate(generation_request())
+
+    assert candidate.answer == "Atlas was deployed to Cloud Run."
+    assert candidate.evidence_ids == ("atlas:0001",)
 
 
 def test_vertex_generation_schema_offers_verbatim_non_heading_lines() -> None:
@@ -246,6 +248,33 @@ def test_vertex_generation_schema_offers_verbatim_non_heading_lines() -> None:
             "evidenceId": "skills:0001",
         }
     ]
+
+
+def test_vertex_generation_fallback_prefers_question_relevant_extract() -> None:
+    provider = VertexGenerationProvider(
+        client=as_client(FakeModels(generation_response=TextResponse("not-json"))),
+        model="generation-model",
+        max_output_tokens=256,
+    )
+    request = GenerationRequest(
+        question="Did Navneet use AWS?",
+        knowledge_version="version-1",
+        evidence=(
+            GenerationEvidence(
+                evidence_id="skills:0001",
+                content=(
+                    "## Product engineering\n\n"
+                    "Navneet builds full-stack AI applications.\n\n"
+                    "- Cloud: AWS, Cloud Run, Docker, and Terraform."
+                ),
+            ),
+        ),
+    )
+
+    candidate = provider.generate(request)
+
+    assert candidate.answer == "- Cloud: AWS, Cloud Run, Docker, and Terraform."
+    assert candidate.evidence_ids == ("skills:0001",)
 
 
 def test_vertex_errors_are_translated_without_vendor_details() -> None:
