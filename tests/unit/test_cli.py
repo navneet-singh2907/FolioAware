@@ -106,7 +106,11 @@ def test_cli_does_not_print_vendor_failure_details(
     capsys: pytest.CaptureFixture[str],
 ) -> None:
     sync = MagicMock(spec=SyncKnowledge)
-    sync.execute.side_effect = ModelUnavailableError("sensitive vendor detail")
+    sync.execute.side_effect = ModelUnavailableError(
+        "sensitive vendor detail",
+        provider_error_type="APIError",
+        provider_status="UNAUTHENTICATED",
+    )
 
     def factory(settings: SyncSettings) -> SyncCommandContainer:
         return SyncCommandContainer(sync_knowledge=cast(SyncKnowledge, sync))
@@ -125,7 +129,14 @@ def test_cli_does_not_print_vendor_failure_details(
     captured = capsys.readouterr()
     assert exit_code == 1
     assert "sensitive vendor detail" not in captured.err
-    assert json.loads(captured.err)["errorCode"] == "EMBEDDING_UNAVAILABLE"
+    assert json.loads(captured.err) == {
+        "diagnostic": {
+            "providerErrorType": "APIError",
+            "providerStatus": "UNAUTHENTICATED",
+        },
+        "errorCode": "EMBEDDING_UNAVAILABLE",
+        "status": "failed",
+    }
 
 
 @pytest.mark.parametrize(

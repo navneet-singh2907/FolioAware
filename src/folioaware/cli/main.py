@@ -2,6 +2,7 @@
 
 import argparse
 import json
+import re
 import sys
 from collections.abc import Callable, Sequence
 from pathlib import Path
@@ -115,10 +116,13 @@ def main(
                 git_commit=parsed.git_commit,
             )
         except (FolioAwareError, ValidationError, OSError) as error:
-            failure = {
+            failure: dict[str, object] = {
                 "status": "failed",
                 "errorCode": _cli_error_code(error),
             }
+            diagnostic = _model_diagnostic(error)
+            if diagnostic:
+                failure["diagnostic"] = diagnostic
             print(json.dumps(failure, sort_keys=True), file=sys.stderr)
             return 1
         print(json.dumps(result.model_dump(mode="json", by_alias=True), sort_keys=True))
@@ -173,6 +177,22 @@ def _cli_error_code(error: Exception) -> str:
     if isinstance(error, SyncValidationError):
         return "SYNC_VALIDATION_FAILED"
     return "SYNC_INPUT_UNAVAILABLE"
+
+
+def _model_diagnostic(error: Exception) -> dict[str, str]:
+    """Expose bounded provider metadata without leaking vendor error text."""
+    if not isinstance(error, ModelUnavailableError):
+        return {}
+    diagnostic: dict[str, str] = {}
+    if error.provider_error_type and re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]{0,79}", error.provider_error_type
+    ):
+        diagnostic["providerErrorType"] = error.provider_error_type
+    if error.provider_status and re.fullmatch(
+        r"[A-Z0-9][A-Z0-9_.-]{0,63}", error.provider_status
+    ):
+        diagnostic["providerStatus"] = error.provider_status
+    return diagnostic
 
 
 def _evaluation_cli_error_code(error: Exception) -> str:
