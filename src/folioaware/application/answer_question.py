@@ -127,7 +127,7 @@ class AnswerQuestion:
             evidence_by_id[evidence_id].content
             for evidence_id in candidate.evidence_ids
         }
-        if candidate.answer not in cited_content:
+        if not any(candidate.answer in content for content in cited_content):
             raise InvalidModelOutputError(
                 "MVP answers must be an exact extract from cited evidence"
             )
