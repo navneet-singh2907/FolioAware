@@ -157,6 +157,7 @@ def build_sync_container(
             client=resolved_vertex,
             model=settings.embedding_model,
             dimensions=settings.embedding_dimensions,
+            minimum_interval_seconds=settings.embedding_min_interval_seconds,
         ),
         repository=FirestoreKnowledgeRepository(
             client=resolved_firestore,

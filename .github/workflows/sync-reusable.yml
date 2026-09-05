@@ -47,6 +47,11 @@ on:
         required: false
         default: 768
         type: number
+      embedding_min_interval_seconds:
+        description: Minimum delay between embedding requests for quota smoothing
+        required: false
+        default: 13
+        type: number
       request_timeout_seconds:
         description: Per-request Google SDK timeout
         required: false
@@ -134,6 +139,7 @@ jobs:
           CONTENT_ROOT: ${{ inputs.content_root }}
           FOLIOAWARE_BACKEND: google
           FOLIOAWARE_EMBEDDING_DIMENSIONS: ${{ inputs.embedding_dimensions }}
+          FOLIOAWARE_EMBEDDING_MIN_INTERVAL_SECONDS: ${{ inputs.embedding_min_interval_seconds }}
           FOLIOAWARE_EMBEDDING_MODEL: ${{ inputs.embedding_model }}
           FOLIOAWARE_FIRESTORE_DATABASE: ${{ inputs.firestore_database }}
           FOLIOAWARE_GOOGLE_CLOUD_LOCATION: ${{ inputs.google_cloud_location }}

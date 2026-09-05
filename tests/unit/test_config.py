@@ -75,6 +75,7 @@ def test_google_sync_requires_only_project_and_embedding_configuration() -> None
     )
 
     assert settings.embedding_model == "gemini-embedding-001"
+    assert settings.embedding_min_interval_seconds == 0
 
 
 def test_google_sync_rejects_missing_project() -> None:
