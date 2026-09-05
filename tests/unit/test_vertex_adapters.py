@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 from typing import Any, cast
 from unittest.mock import MagicMock
 
@@ -167,11 +168,7 @@ def test_vertex_embeddings_reject_negative_minimum_interval() -> None:
 
 
 def test_vertex_generation_requests_structured_grounded_output() -> None:
-    models = FakeModels(
-        generation_response=TextResponse(
-            '{"answer":"Atlas was deployed to Cloud Run.","evidenceIds":["atlas:0001"]}'
-        )
-    )
+    models = FakeModels(generation_response=TextResponse('{"selectionIndex":0}'))
     provider = VertexGenerationProvider(
         client=as_client(models),
         model="generation-model",
@@ -189,26 +186,24 @@ def test_vertex_generation_requests_structured_grounded_output() -> None:
         "type": "object",
         "additionalProperties": False,
         "properties": {
-            "answer": {
-                "type": "string",
-                "enum": ["Atlas was deployed to Cloud Run."],
-            },
-            "evidenceIds": {
-                "type": "array",
-                "items": {"type": "string", "enum": ["atlas:0001"]},
-                "minItems": 1,
-                "maxItems": 1,
+            "selectionIndex": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 0,
             },
         },
-        "required": ["answer", "evidenceIds"],
-        "propertyOrdering": ["answer", "evidenceIds"],
+        "required": ["selectionIndex"],
+        "propertyOrdering": ["selectionIndex"],
     }
     assert config.tools is None
     assert config.temperature == 0
     assert "untrusted data" in str(config.system_instruction)
 
 
-@pytest.mark.parametrize("text", [None, "not-json", '{"answer":"missing ids"}'])
+@pytest.mark.parametrize(
+    "text",
+    [None, "not-json", "[]", '{"selectionIndex":true}', '{"selectionIndex":1}'],
+)
 def test_vertex_generation_rejects_invalid_output(text: str | None) -> None:
     provider = VertexGenerationProvider(
         client=as_client(FakeModels(generation_response=TextResponse(text))),
@@ -221,11 +216,7 @@ def test_vertex_generation_rejects_invalid_output(text: str | None) -> None:
 
 
 def test_vertex_generation_schema_offers_verbatim_non_heading_lines() -> None:
-    models = FakeModels(
-        generation_response=TextResponse(
-            '{"answer":"- Cloud: AWS and Cloud Run.","evidenceIds":["skills:0001"]}'
-        )
-    )
+    models = FakeModels(generation_response=TextResponse('{"selectionIndex":0}'))
     request = GenerationRequest(
         question="Did Navneet use AWS?",
         knowledge_version="version-1",
@@ -245,9 +236,16 @@ def test_vertex_generation_schema_offers_verbatim_non_heading_lines() -> None:
     candidate = provider.generate(request)
 
     assert candidate.answer == "- Cloud: AWS and Cloud Run."
+    assert candidate.evidence_ids == ("skills:0001",)
     assert models.generation_call is not None
-    schema = models.generation_call["config"].response_json_schema
-    assert schema["properties"]["answer"]["enum"] == ["- Cloud: AWS and Cloud Run."]
+    payload = json.loads(models.generation_call["contents"].split("\n", 1)[1])
+    assert payload["answerChoices"] == [
+        {
+            "selectionIndex": 0,
+            "answer": "- Cloud: AWS and Cloud Run.",
+            "evidenceId": "skills:0001",
+        }
+    ]
 
 
 def test_vertex_errors_are_translated_without_vendor_details() -> None:
