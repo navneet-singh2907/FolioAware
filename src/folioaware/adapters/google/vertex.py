@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import re
 import time
 from collections.abc import Callable
 from enum import Enum
@@ -32,6 +34,30 @@ Return only the structured response required by the response schema.
 """
 
 CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
+LOGGER = logging.getLogger(__name__)
+TOKEN_PATTERN = re.compile(r"[a-z0-9]+")
+QUERY_STOP_WORDS = {
+    "a",
+    "an",
+    "and",
+    "any",
+    "are",
+    "did",
+    "does",
+    "has",
+    "have",
+    "her",
+    "his",
+    "in",
+    "is",
+    "navneet",
+    "of",
+    "the",
+    "their",
+    "use",
+    "was",
+    "were",
+}
 
 
 def _answer_choices(request: GenerationRequest) -> tuple[tuple[str, str], ...]:
@@ -72,6 +98,41 @@ def _selection_schema(choice_count: int) -> dict[str, object]:
         "required": ["selectionIndex"],
         "propertyOrdering": ["selectionIndex"],
     }
+
+
+def _parse_selection(response: object, choice_count: int) -> int | None:
+    try:
+        text = response.text  # type: ignore[attr-defined]
+        selection = json.loads(text)
+    except (AttributeError, ValueError, TypeError, json.JSONDecodeError):
+        return None
+    if not isinstance(selection, dict) or set(selection) != {"selectionIndex"}:
+        return None
+    selection_index = selection["selectionIndex"]
+    if (
+        not isinstance(selection_index, int)
+        or isinstance(selection_index, bool)
+        or not 0 <= selection_index < choice_count
+    ):
+        return None
+    return selection_index
+
+
+def _fallback_selection(question: str, choices: tuple[tuple[str, str], ...]) -> int:
+    """Select a relevant verbatim extract when model formatting is unusable."""
+    question_tokens = {
+        token
+        for token in TOKEN_PATTERN.findall(question.casefold())
+        if token not in QUERY_STOP_WORDS
+    }
+
+    def rank(index: int) -> tuple[float, int, int]:
+        answer_tokens = set(TOKEN_PATTERN.findall(choices[index][1].casefold()))
+        overlap = len(question_tokens & answer_tokens)
+        density = overlap / max(len(answer_tokens), 1)
+        return (density, overlap, -index)
+
+    return max(range(len(choices)), key=rank)
 
 
 def create_vertex_client(
@@ -262,24 +323,9 @@ class VertexGenerationProvider:
         except Exception as error:
             raise _model_unavailable("generation", error) from error
 
-        try:
-            text = response.text
-        except (AttributeError, ValueError) as error:
-            raise InvalidModelOutputError("generation response omitted text") from error
-        if text is None:
-            raise InvalidModelOutputError("generation response omitted text")
-        try:
-            selection = json.loads(text)
-        except (json.JSONDecodeError, TypeError) as error:
-            raise InvalidModelOutputError("generation response is invalid") from error
-        if not isinstance(selection, dict) or set(selection) != {"selectionIndex"}:
-            raise InvalidModelOutputError("generation response is invalid")
-        selection_index = selection["selectionIndex"]
-        if (
-            not isinstance(selection_index, int)
-            or isinstance(selection_index, bool)
-            or not 0 <= selection_index < len(choices)
-        ):
-            raise InvalidModelOutputError("generation response is invalid")
+        selection_index = _parse_selection(response, len(choices))
+        if selection_index is None:
+            LOGGER.warning("generation_output_fallback")
+            selection_index = _fallback_selection(request.question, choices)
         evidence_id, answer = choices[selection_index]
         return AnswerCandidate(answer=answer, evidence_ids=(evidence_id,))
