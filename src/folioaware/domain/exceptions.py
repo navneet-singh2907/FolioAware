@@ -16,6 +16,17 @@ class KnowledgeUnavailableError(FolioAwareError):
 class ModelUnavailableError(FolioAwareError):
     """A required model dependency is unavailable or timed out."""
 
+    def __init__(
+        self,
+        message: str = "model dependency unavailable",
+        *,
+        provider_error_type: str | None = None,
+        provider_status: str | None = None,
+    ) -> None:
+        super().__init__(message)
+        self.provider_error_type = provider_error_type
+        self.provider_status = provider_status
+
 
 class InsightsUnavailableError(FolioAwareError):
     """Privacy-reduced telemetry or aggregate insights are unavailable."""

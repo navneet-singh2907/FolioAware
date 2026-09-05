@@ -3,8 +3,11 @@
 from __future__ import annotations
 
 import json
+from enum import Enum
 
+import google.auth
 from google import genai
+from google.auth.credentials import Credentials
 from google.genai import types
 from pydantic import ValidationError
 
@@ -39,13 +42,28 @@ The answer must exactly copy the complete content of one cited evidence item.
 Return only the structured response required by the response schema.
 """
 
+CLOUD_PLATFORM_SCOPE = "https://www.googleapis.com/auth/cloud-platform"
+
 
 def create_vertex_client(
-    *, project: str, location: str, timeout_seconds: int
+    *,
+    project: str,
+    location: str,
+    timeout_seconds: int,
+    credentials: Credentials | None = None,
 ) -> genai.Client:
-    """Create a Vertex-backed client using Application Default Credentials."""
+    """Create a Vertex client with explicitly scoped ADC credentials."""
+    resolved_credentials = credentials
+    if resolved_credentials is None:
+        try:
+            resolved_credentials, _ = google.auth.default(
+                scopes=(CLOUD_PLATFORM_SCOPE,)
+            )
+        except Exception as error:
+            raise _model_unavailable("authentication", error) from error
     return genai.Client(
         vertexai=True,
+        credentials=resolved_credentials,
         project=project,
         location=location,
         http_options=types.HttpOptions(
@@ -53,6 +71,42 @@ def create_vertex_client(
             timeout=timeout_seconds * 1000,
             retry_options=types.HttpRetryOptions(attempts=1),
         ),
+    )
+
+
+def _safe_provider_status(error: Exception) -> str | None:
+    """Return only a bounded machine-readable status, never an error message."""
+    for attribute in ("status", "code"):
+        try:
+            value = getattr(error, attribute, None)
+            if callable(value):
+                value = value()
+        except Exception:
+            continue
+        if isinstance(value, Enum):
+            value = value.name
+        if isinstance(value, int) and not isinstance(value, bool):
+            return str(value)
+        if (
+            isinstance(value, str)
+            and 1 <= len(value) <= 64
+            and all(
+                character.isupper() or character in "0123456789_.-"
+                for character in value
+            )
+        ):
+            return value
+    return None
+
+
+def _model_unavailable(operation: str, error: Exception) -> ModelUnavailableError:
+    error_type = type(error).__name__
+    if not error_type.isidentifier() or len(error_type) > 80:
+        error_type = "UnknownProviderError"
+    return ModelUnavailableError(
+        f"{operation} request failed",
+        provider_error_type=error_type,
+        provider_status=_safe_provider_status(error),
     )
 
 
@@ -96,7 +150,7 @@ class VertexEmbeddingProvider:
                 ),
             )
         except Exception as error:
-            raise ModelUnavailableError("embedding request failed") from error
+            raise _model_unavailable("embedding", error) from error
 
         embeddings = response.embeddings
         if embeddings is None or len(embeddings) != 1:
@@ -147,7 +201,7 @@ class VertexGenerationProvider:
                 ),
             )
         except Exception as error:
-            raise ModelUnavailableError("generation request failed") from error
+            raise _model_unavailable("generation", error) from error
 
         try:
             text = response.text

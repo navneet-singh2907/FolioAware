@@ -3,9 +3,12 @@ from __future__ import annotations
 from typing import Any, cast
 from unittest.mock import MagicMock
 
+import google.auth
 import pytest
 from google import genai
+from google.auth.credentials import Credentials
 from google.genai import types
+from google.genai.errors import APIError
 
 from folioaware.adapters.google.vertex import (
     VertexEmbeddingProvider,
@@ -168,6 +171,27 @@ def test_vertex_errors_are_translated_without_vendor_details() -> None:
         provider.embed_document("content")
 
     assert "sensitive vendor detail" not in str(error.value)
+    assert error.value.provider_error_type == "RuntimeError"
+    assert error.value.provider_status is None
+
+
+def test_vertex_error_preserves_only_safe_provider_diagnostics() -> None:
+    provider_error = APIError(
+        401,
+        {"error": {"status": "UNAUTHENTICATED", "message": "sensitive detail"}},
+    )
+    provider = VertexEmbeddingProvider(
+        client=as_client(FakeModels(error=provider_error)),
+        model="embedding-model",
+        dimensions=3,
+    )
+
+    with pytest.raises(ModelUnavailableError) as error:
+        provider.embed_document("content")
+
+    assert error.value.provider_error_type == "APIError"
+    assert error.value.provider_status == "UNAUTHENTICATED"
+    assert "sensitive detail" not in str(error.value)
 
 
 def test_vertex_generation_errors_are_translated_without_vendor_details() -> None:
@@ -187,14 +211,21 @@ def test_vertex_client_factory_uses_stable_api_and_bounded_requests(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     constructor = MagicMock(return_value=MagicMock())
+    credentials = MagicMock(spec=Credentials)
+    default_credentials = MagicMock(return_value=(credentials, "ambient-project"))
     monkeypatch.setattr(genai, "Client", constructor)
+    monkeypatch.setattr(google.auth, "default", default_credentials)
 
     create_vertex_client(
         project="synthetic-project", location="global", timeout_seconds=12
     )
 
     kwargs = constructor.call_args.kwargs
+    default_credentials.assert_called_once_with(
+        scopes=("https://www.googleapis.com/auth/cloud-platform",)
+    )
     assert kwargs["vertexai"] is True
+    assert kwargs["credentials"] is credentials
     assert kwargs["project"] == "synthetic-project"
     http_options = kwargs["http_options"]
     assert isinstance(http_options, types.HttpOptions)
@@ -202,3 +233,22 @@ def test_vertex_client_factory_uses_stable_api_and_bounded_requests(
     assert http_options.timeout == 12_000
     assert http_options.retry_options is not None
     assert http_options.retry_options.attempts == 1
+
+
+def test_vertex_client_factory_translates_adc_failure_without_details(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        google.auth,
+        "default",
+        MagicMock(side_effect=RuntimeError("sensitive credential detail")),
+    )
+
+    with pytest.raises(ModelUnavailableError) as error:
+        create_vertex_client(
+            project="synthetic-project", location="global", timeout_seconds=12
+        )
+
+    assert error.value.provider_error_type == "RuntimeError"
+    assert error.value.provider_status is None
+    assert "sensitive credential detail" not in str(error.value)
