@@ -185,6 +185,24 @@ def test_vertex_generation_requests_structured_grounded_output() -> None:
     config = models.generation_call["config"]
     assert isinstance(config, types.GenerateContentConfig)
     assert config.response_mime_type == "application/json"
+    assert config.response_json_schema == {
+        "type": "object",
+        "additionalProperties": False,
+        "properties": {
+            "answer": {
+                "type": "string",
+                "enum": ["Atlas was deployed to Cloud Run."],
+            },
+            "evidenceIds": {
+                "type": "array",
+                "items": {"type": "string", "enum": ["atlas:0001"]},
+                "minItems": 1,
+                "maxItems": 1,
+            },
+        },
+        "required": ["answer", "evidenceIds"],
+        "propertyOrdering": ["answer", "evidenceIds"],
+    }
     assert config.tools is None
     assert config.temperature == 0
     assert "untrusted data" in str(config.system_instruction)
@@ -200,6 +218,36 @@ def test_vertex_generation_rejects_invalid_output(text: str | None) -> None:
 
     with pytest.raises(InvalidModelOutputError):
         provider.generate(generation_request())
+
+
+def test_vertex_generation_schema_offers_verbatim_non_heading_lines() -> None:
+    models = FakeModels(
+        generation_response=TextResponse(
+            '{"answer":"- Cloud: AWS and Cloud Run.","evidenceIds":["skills:0001"]}'
+        )
+    )
+    request = GenerationRequest(
+        question="Did Navneet use AWS?",
+        knowledge_version="version-1",
+        evidence=(
+            GenerationEvidence(
+                evidence_id="skills:0001",
+                content="## Cloud\n\n- Cloud: AWS and Cloud Run.",
+            ),
+        ),
+    )
+    provider = VertexGenerationProvider(
+        client=as_client(models),
+        model="generation-model",
+        max_output_tokens=256,
+    )
+
+    candidate = provider.generate(request)
+
+    assert candidate.answer == "- Cloud: AWS and Cloud Run."
+    assert models.generation_call is not None
+    schema = models.generation_call["config"].response_json_schema
+    assert schema["properties"]["answer"]["enum"] == ["- Cloud: AWS and Cloud Run."]
 
 
 def test_vertex_errors_are_translated_without_vendor_details() -> None:
