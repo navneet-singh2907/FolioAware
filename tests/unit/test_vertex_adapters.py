@@ -16,7 +16,11 @@ from folioaware.adapters.google.vertex import (
     VertexGenerationProvider,
     create_vertex_client,
 )
-from folioaware.domain.answers import GenerationEvidence, GenerationRequest
+from folioaware.domain.answers import (
+    AnswerStatus,
+    GenerationEvidence,
+    GenerationRequest,
+)
 from folioaware.domain.exceptions import (
     InvalidModelOutputError,
     ModelUnavailableError,
@@ -168,66 +172,78 @@ def test_vertex_embeddings_reject_negative_minimum_interval() -> None:
 
 
 def test_vertex_generation_requests_structured_grounded_output() -> None:
-    models = FakeModels(generation_response=TextResponse('{"selectionIndex":0}'))
+    models = FakeModels(
+        generation_response=TextResponse(
+            '{"answer":"Atlas runs on Cloud Run.",'
+            '"answerStatus":"answered","evidenceIds":["atlas:0001"]}'
+        )
+    )
     provider = VertexGenerationProvider(
         client=as_client(models),
-        model="generation-model",
+        model="gemini-2.5-flash",
         max_output_tokens=256,
     )
 
     candidate = provider.generate(generation_request())
 
     assert candidate.evidence_ids == ("atlas:0001",)
+    assert candidate.answer == "Atlas runs on Cloud Run."
     assert models.generation_call is not None
     config = models.generation_call["config"]
     assert isinstance(config, types.GenerateContentConfig)
     assert config.response_mime_type == "application/json"
-    assert config.response_json_schema == {
-        "type": "object",
-        "additionalProperties": False,
-        "properties": {
-            "selectionIndex": {
-                "type": "integer",
-                "minimum": 0,
-                "maximum": 0,
-            },
-        },
-        "required": ["selectionIndex"],
-        "propertyOrdering": ["selectionIndex"],
-    }
+    schema = cast(dict[str, Any], config.response_json_schema)
+    assert schema["properties"]["evidenceIds"]["items"]["enum"] == ["atlas:0001"]
+    assert schema["required"] == ["answer", "answerStatus", "evidenceIds"]
     assert config.tools is None
-    assert config.temperature == 0
+    assert config.temperature == 0.3
+    assert config.seed is None
+    assert config.thinking_config is not None
+    assert config.thinking_config.thinking_budget == 256
     assert "untrusted data" in str(config.system_instruction)
+    assert "skill listing does not prove" in str(config.system_instruction)
+    payload = json.loads(models.generation_call["contents"].split("\n", 1)[1])
+    assert payload == generation_request().model_dump(mode="json", by_alias=True)
+    assert "answerChoices" not in payload
 
 
 @pytest.mark.parametrize(
     "text",
-    [None, "not-json", "[]", '{"selectionIndex":true}', '{"selectionIndex":1}'],
+    [
+        None,
+        "not-json",
+        "[]",
+        '{"selectionIndex":0}',
+        '{"answer":" ","evidenceIds":["atlas:0001"]}',
+        '{"answer":"Atlas runs on Cloud Run.","evidenceIds":[]}',
+        '{"answer":"Unknown","answerStatus":"knowledge_gap",'
+        '"evidenceIds":["atlas:0001"]}',
+        '{"answer":"Unknown","answerStatus":"partial","evidenceIds":[]}',
+        '{"answer":"x","evidenceIds":["atlas:0001"],"url":"https://evil.test"}',
+        json.dumps({"answer": "x" * 2001, "evidenceIds": ["atlas:0001"]}),
+    ],
 )
-def test_vertex_generation_falls_back_for_invalid_output(text: str | None) -> None:
+def test_vertex_generation_rejects_invalid_output_without_stock_fallback(
+    text: str | None,
+) -> None:
     provider = VertexGenerationProvider(
         client=as_client(FakeModels(generation_response=TextResponse(text))),
         model="generation-model",
         max_output_tokens=256,
     )
 
-    candidate = provider.generate(generation_request())
-
-    assert candidate.answer == "Atlas was deployed to Cloud Run."
-    assert candidate.evidence_ids == ("atlas:0001",)
+    with pytest.raises(InvalidModelOutputError):
+        provider.generate(generation_request())
 
 
-def test_vertex_generation_schema_offers_verbatim_non_heading_lines() -> None:
-    models = FakeModels(generation_response=TextResponse('{"selectionIndex":0}'))
-    request = GenerationRequest(
-        question="Did Navneet use AWS?",
-        knowledge_version="version-1",
-        evidence=(
-            GenerationEvidence(
-                evidence_id="skills:0001",
-                content="## Cloud\n\n- Cloud: AWS and Cloud Run.",
-            ),
-        ),
+@pytest.mark.parametrize("answer", ["", "No verified information."])
+def test_vertex_generation_can_abstain_despite_retrieval_match(answer: str) -> None:
+    models = FakeModels(
+        generation_response=TextResponse(
+            json.dumps(
+                {"answer": answer, "answerStatus": "knowledge_gap", "evidenceIds": []}
+            )
+        )
     )
     provider = VertexGenerationProvider(
         client=as_client(models),
@@ -235,46 +251,52 @@ def test_vertex_generation_schema_offers_verbatim_non_heading_lines() -> None:
         max_output_tokens=256,
     )
 
-    candidate = provider.generate(request)
+    candidate = provider.generate(generation_request())
 
-    assert candidate.answer == "- Cloud: AWS and Cloud Run."
-    assert candidate.evidence_ids == ("skills:0001",)
+    assert candidate.answer_status is AnswerStatus.KNOWLEDGE_GAP
+    assert candidate.evidence_ids == ()
     assert models.generation_call is not None
-    payload = json.loads(models.generation_call["contents"].split("\n", 1)[1])
-    assert payload["answerChoices"] == [
-        {
-            "selectionIndex": 0,
-            "answer": "- Cloud: AWS and Cloud Run.",
-            "evidenceId": "skills:0001",
-        }
-    ]
+    assert models.generation_call["config"].thinking_config is None
 
 
-def test_vertex_generation_fallback_prefers_question_relevant_extract() -> None:
+def test_vertex_generation_synthesizes_multiple_evidence_items() -> None:
+    answer = "Atlas uses FastAPI and runs on Cloud Run."
     provider = VertexGenerationProvider(
-        client=as_client(FakeModels(generation_response=TextResponse("not-json"))),
+        client=as_client(
+            FakeModels(
+                generation_response=TextResponse(
+                    json.dumps(
+                        {
+                            "answer": answer,
+                            "answerStatus": "answered",
+                            "evidenceIds": ["atlas:0001", "atlas:0002"],
+                        }
+                    )
+                )
+            )
+        ),
         model="generation-model",
         max_output_tokens=256,
     )
     request = GenerationRequest(
-        question="Did Navneet use AWS?",
+        question="What is Atlas built with?",
         knowledge_version="version-1",
         evidence=(
             GenerationEvidence(
-                evidence_id="skills:0001",
-                content=(
-                    "## Product engineering\n\n"
-                    "Navneet builds full-stack AI applications.\n\n"
-                    "- Cloud: AWS, Cloud Run, Docker, and Terraform."
-                ),
+                evidence_id="atlas:0001",
+                content="Atlas was built with FastAPI.",
+            ),
+            GenerationEvidence(
+                evidence_id="atlas:0002",
+                content="Atlas was deployed on Cloud Run.",
             ),
         ),
     )
 
     candidate = provider.generate(request)
 
-    assert candidate.answer == "- Cloud: AWS, Cloud Run, Docker, and Terraform."
-    assert candidate.evidence_ids == ("skills:0001",)
+    assert candidate.answer == answer
+    assert candidate.evidence_ids == ("atlas:0001", "atlas:0002")
 
 
 def test_vertex_errors_are_translated_without_vendor_details() -> None:

@@ -27,8 +27,11 @@ visitor question  -> retrieve active evidence -> evidence gate
 - Unchanged sources reuse compatible embeddings; failed activation preserves
   the previous version.
 - Generation is skipped when retrieval is below the calibrated threshold.
-- Model output is untrusted: evidence IDs must belong to the retrieved set and,
-  in this first slice, the answer must be an exact extract of cited evidence.
+- Model output is untrusted: bounded structured answers must cite retrieved
+  evidence IDs. Vertex synthesizes conversational answers; the local test
+  adapter remains extractive. Citation membership is checked deterministically,
+  while semantic faithfulness requires separate quality review (see
+  [the conversational generation decision](docs/adr/0014-conversational-generation.md)).
 - Citation titles and URLs come from approved application data, never from the
   generator.
 - Questions are redacted, optional session IDs are HMAC-pseudonymized, and

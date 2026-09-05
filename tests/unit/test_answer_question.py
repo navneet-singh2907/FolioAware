@@ -4,7 +4,7 @@ import pytest
 
 from folioaware.api.dependencies import build_local_container
 from folioaware.application.answer_question import AnswerQuestion
-from folioaware.domain.answers import AnswerCandidate, GenerationRequest
+from folioaware.domain.answers import AnswerCandidate, AnswerStatus, GenerationRequest
 from folioaware.domain.exceptions import InvalidModelOutputError
 from folioaware.ports.question_repository import QuestionRepository
 from folioaware.security import TelemetrySanitizer
@@ -26,6 +26,12 @@ class InvalidGenerator:
 
     def generate(self, request: GenerationRequest) -> AnswerCandidate:
         evidence = request.evidence[0]
+        if self.mode == "abstain":
+            return AnswerCandidate(
+                answer="Untrusted model text should not escape on abstention.",
+                evidence_ids=(),
+                answer_status=AnswerStatus.KNOWLEDGE_GAP,
+            )
         if self.mode == "unknown":
             return AnswerCandidate(
                 answer=evidence.content,
@@ -47,7 +53,7 @@ class InvalidGenerator:
                 evidence_ids=(evidence.evidence_id,),
             )
         return AnswerCandidate(
-            answer="An invented claim that is not present in the evidence.",
+            answer="Yes, Project Atlas uses FastAPI for its API.",
             evidence_ids=(evidence.evidence_id,),
         )
 
@@ -76,7 +82,7 @@ def build_service(
     )
 
 
-@pytest.mark.parametrize("mode", ["unknown", "duplicate", "invented"])
+@pytest.mark.parametrize("mode", ["unknown", "duplicate"])
 def test_rejects_untrusted_generator_output(mode: str) -> None:
     service = build_service(InvalidGenerator(mode))
 
@@ -92,6 +98,27 @@ def test_accepts_verbatim_extract_from_larger_cited_evidence() -> None:
     assert result.answer_status == "answered"
     assert result.answer
     assert result.citations
+
+
+def test_accepts_synthesis_with_application_owned_citations() -> None:
+    service = build_service(InvalidGenerator("paraphrase"))
+
+    result = service.execute(question="Did they use FastAPI?", session_id=None)
+
+    assert result.answer == "Yes, Project Atlas uses FastAPI for its API."
+    assert result.answer_status == "answered"
+    assert len(result.citations) == 1
+    assert "atlas" in result.citations[0].source_id
+
+
+def test_generation_abstention_uses_trusted_text_and_no_citations() -> None:
+    service = build_service(InvalidGenerator("abstain"))
+
+    result = service.execute(question="Did they use FastAPI?", session_id=None)
+
+    assert result.answer == "I don't have verified information about that."
+    assert result.answer_status == "knowledge_gap"
+    assert result.citations == ()
 
 
 def test_telemetry_failure_does_not_break_a_verified_answer() -> None:

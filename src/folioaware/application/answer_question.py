@@ -116,6 +116,16 @@ class AnswerQuestion:
             ),
         )
         candidate = self._generation.generate(request)
+        if candidate.answer_status is AnswerStatus.KNOWLEDGE_GAP:
+            # A semantic mismatch can remain even after the distance gate.
+            # Use trusted abstention text rather than displaying ungrounded prose.
+            return AskResult(
+                request_id=request_id,
+                answer=KNOWLEDGE_GAP_ANSWER,
+                answer_status=AnswerStatus.KNOWLEDGE_GAP,
+                citations=(),
+                knowledge_version=knowledge_version,
+            )
         evidence_by_id = {item.evidence_id: item for item in evidence}
         if len(set(candidate.evidence_ids)) != len(candidate.evidence_ids):
             raise InvalidModelOutputError("candidate contains duplicate evidence IDs")
@@ -123,14 +133,9 @@ class AnswerQuestion:
             evidence_id not in evidence_by_id for evidence_id in candidate.evidence_ids
         ):
             raise InvalidModelOutputError("candidate references unknown evidence")
-        cited_content = {
-            evidence_by_id[evidence_id].content
-            for evidence_id in candidate.evidence_ids
-        }
-        if not any(candidate.answer in content for content in cited_content):
-            raise InvalidModelOutputError(
-                "MVP answers must be an exact extract from cited evidence"
-            )
+        # Evidence membership is deterministic; semantic faithfulness of a
+        # paraphrase is not. The generation prompt and separate quality evals
+        # cover that distinction without pretending substring equality proves it.
 
         citations_by_source: dict[str, Citation] = {}
         for evidence_id in candidate.evidence_ids:

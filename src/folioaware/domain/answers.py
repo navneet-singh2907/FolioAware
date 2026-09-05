@@ -1,8 +1,9 @@
 """Question, evidence, generation, citation, and answer contracts."""
 
 from enum import StrEnum
+from typing import Literal
 
-from pydantic import Field, field_validator
+from pydantic import Field, field_validator, model_validator
 
 from folioaware.domain.base import DomainModel
 from folioaware.domain.knowledge import validate_citation_url
@@ -52,8 +53,24 @@ class GenerationRequest(DomainModel):
 
 
 class AnswerCandidate(DomainModel):
-    answer: str = Field(min_length=1, max_length=2000)
-    evidence_ids: tuple[str, ...] = Field(min_length=1, max_length=5)
+    answer: str = Field(max_length=2000)
+    evidence_ids: tuple[str, ...] = Field(max_length=5)
+    answer_status: Literal[AnswerStatus.ANSWERED, AnswerStatus.KNOWLEDGE_GAP] = (
+        AnswerStatus.ANSWERED
+    )
+
+    @field_validator("answer")
+    @classmethod
+    def answer_is_nonblank(cls, value: str) -> str:
+        return value.strip()
+
+    @model_validator(mode="after")
+    def status_matches_evidence(self) -> "AnswerCandidate":
+        if (self.answer_status is AnswerStatus.ANSWERED) != bool(self.evidence_ids):
+            raise ValueError("answered requires evidence; knowledge_gap requires none")
+        if self.answer_status is AnswerStatus.ANSWERED and not self.answer:
+            raise ValueError("answered text must not be blank")
+        return self
 
 
 class AskResult(DomainModel):

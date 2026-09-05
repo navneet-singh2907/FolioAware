@@ -40,7 +40,7 @@ class Settings(BaseSettings):
     embedding_dimensions: int = Field(default=768, ge=1, le=2048)
     generation_model: str | None = None
     google_request_timeout_seconds: int = Field(default=15, ge=1, le=60)
-    generation_max_output_tokens: int = Field(default=512, ge=64, le=2048)
+    generation_max_output_tokens: int = Field(default=1024, ge=64, le=2048)
 
     @field_validator("allowed_origins")
     @classmethod
