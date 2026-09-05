@@ -177,6 +177,9 @@ caller must use the same exact workflow commit configured in
 `sync_workflow_ref`; otherwise the WIF provider rejects authentication. It can
 write knowledge and sync history through the dedicated sync identity but
 cannot deploy Cloud Run, read runtime secrets, or generate visitor answers.
+When the sync caller is a different repository from the deployment caller, set
+`sync_github_repository_id` to that caller's immutable numeric repository ID;
+otherwise it defaults to `github_repository_id`.
 
 ## Existing resources and imports
 

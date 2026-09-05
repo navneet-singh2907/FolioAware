@@ -3,6 +3,8 @@
 project_id                 = "example-folio-aware-project"
 github_repository_id       = "123456789"
 github_repository_owner_id = "987654321"
+# Set this when sync is called from a different repository than deployment.
+sync_github_repository_id = "123456789"
 generation_model           = "gemini-2.5-flash"
 allowed_origins             = ["https://portfolio.example"]
 

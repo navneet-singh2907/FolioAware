@@ -22,7 +22,7 @@ locals {
 
   sync_wif_condition = join(" && ", [
     "assertion.repository_owner_id == '${var.github_repository_owner_id}'",
-    "assertion.repository_id == '${var.github_repository_id}'",
+    "assertion.repository_id == '${coalesce(var.sync_github_repository_id, var.github_repository_id)}'",
     "assertion.ref == '${var.github_ref}'",
     "assertion.job_workflow_ref == '${var.sync_workflow_ref}'",
   ])
