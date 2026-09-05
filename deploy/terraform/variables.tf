@@ -311,6 +311,18 @@ variable "sync_workflow_ref" {
   }
 }
 
+variable "sync_github_repository_id" {
+  description = "Immutable numeric GitHub repository ID of the sync caller; defaults to github_repository_id."
+  type        = string
+  default     = null
+  nullable    = true
+
+  validation {
+    condition     = var.sync_github_repository_id == null || can(regex("^[0-9]+$", var.sync_github_repository_id))
+    error_message = "sync_github_repository_id must contain digits only when set."
+  }
+}
+
 variable "vertex_location" {
   description = "Vertex AI location used by the application."
   type        = string

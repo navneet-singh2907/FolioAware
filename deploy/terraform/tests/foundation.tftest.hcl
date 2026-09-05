@@ -11,6 +11,7 @@ mock_provider "google" {
 variables {
   project_id                       = "example-folio-aware-project"
   github_repository_id             = "123456789"
+  sync_github_repository_id        = "555555555"
   github_repository_owner_id       = "987654321"
   generation_model                 = "gemini-2.5-flash"
   allowed_origins                  = ["https://portfolio.example"]
@@ -53,6 +54,11 @@ run "foundation_is_safe_by_default" {
   assert {
     condition     = strcontains(google_iam_workload_identity_pool_provider.deploy_github.attribute_condition, "assertion.job_workflow_ref")
     error_message = "Deploy WIF must restrict the exact reusable workflow."
+  }
+
+  assert {
+    condition     = strcontains(google_iam_workload_identity_pool_provider.sync_github.attribute_condition, "assertion.repository_id == '555555555'")
+    error_message = "Sync WIF must restrict its distinct immutable caller repository ID."
   }
 }
 
