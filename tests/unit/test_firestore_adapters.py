@@ -384,7 +384,9 @@ def test_firestore_activation_compares_pointer_and_updates_in_transaction() -> N
     transaction.set.assert_called_once_with(
         pointer_reference, {"active_index_version": "version-2"}
     )
-    transaction.commit.assert_called_once_with(timeout=11)
+    transaction._begin.assert_called_once_with(retry_id=None)
+    transaction._commit.assert_called_once_with()
+    transaction.commit.assert_not_called()
 
 
 def test_firestore_activation_rejects_stale_expected_pointer() -> None:
