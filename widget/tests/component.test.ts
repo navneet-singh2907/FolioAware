@@ -295,7 +295,9 @@ describe("FolioAwareElement", () => {
     submitQuestion(widget, "How was Atlas deployed?");
 
     await vi.waitFor(() => {
-      expect(query(widget, ".result").getAttribute("data-status")).toBe("answered");
+      expect(
+        query(widget, ".result:not(.history-turn)").getAttribute("data-status"),
+      ).toBe("answered");
     });
     expect(fetchImplementation).toHaveBeenCalledTimes(2);
   });
@@ -424,5 +426,48 @@ describe("FolioAwareElement", () => {
     expect(link.getAttribute("href")).toBe("/projects/atlas");
     expect(link.target).toBe("");
     expect(link.rel).toBe("");
+  });
+  it("keeps earlier turns visible and sends one bounded prior question for a follow-up", async () => {
+    const requestBodies: Array<Record<string, unknown>> = [];
+    const fetchImplementation = vi.fn(
+      async (_input: RequestInfo | URL, init?: RequestInit) => {
+        requestBodies.push(JSON.parse(init?.body as string) as Record<string, unknown>);
+        return jsonResponse(
+          requestBodies.length === 1
+            ? answeredResponse("Terraform was used for FolioAware infrastructure.")
+            : answeredResponse("Terraform was used in the FolioAware project."),
+        );
+      },
+    );
+    vi.stubGlobal("fetch", fetchImplementation);
+    const widget = attachWidget({ apiBaseUrl: "https://api.example" });
+
+    submitQuestion(widget, "Did Navneet use Terraform?");
+    await vi.waitFor(() => {
+      expect(query(widget, ".status").textContent).toBe("Answer ready.");
+    });
+    expect(query<HTMLTextAreaElement>(widget, ".question").value).toBe("");
+
+    submitQuestion(widget, "In which project?");
+    await vi.waitFor(() => expect(requestBodies).toHaveLength(2));
+
+    expect(requestBodies[0]).not.toHaveProperty("previousQuestion");
+    expect(requestBodies[1]).toMatchObject({
+      question: "In which project?",
+      previousQuestion: "Did Navneet use Terraform?",
+    });
+    await vi.waitFor(() => {
+      expect(shadow(widget).querySelectorAll(".result")).toHaveLength(2);
+      expect(shadow(widget).textContent).toContain(
+        "Terraform was used for FolioAware infrastructure.",
+      );
+      expect(shadow(widget).textContent).toContain(
+        "Terraform was used in the FolioAware project.",
+      );
+      expect(shadow(widget).textContent).toContain(
+        "You asked: Did Navneet use Terraform?",
+      );
+      expect(shadow(widget).textContent).toContain("You asked: In which project?");
+    });
   });
 });

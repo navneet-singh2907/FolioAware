@@ -49,6 +49,7 @@ export interface FolioAwareClientOptions {
 
 export interface AskOptions {
   readonly sessionId?: string;
+  readonly previousQuestion?: string;
   readonly signal?: AbortSignal;
 }
 
@@ -203,6 +204,10 @@ export class FolioAwareClient {
   async ask(question: string, options: AskOptions = {}): Promise<AskResponse> {
     const normalizedQuestion = normalizeQuestion(question);
     validateSessionId(options.sessionId);
+    const normalizedPreviousQuestion =
+      options.previousQuestion === undefined
+        ? undefined
+        : normalizeQuestion(options.previousQuestion);
     if (options.signal?.aborted) {
       throw new FolioAwareClientError("aborted", "Request was cancelled");
     }
@@ -217,11 +222,15 @@ export class FolioAwareClient {
     }, this.#timeoutMs);
 
     try {
-      const body: { question: string; sessionId?: string } = {
-        question: normalizedQuestion,
-      };
+      const body: { question: string; previousQuestion?: string; sessionId?: string } =
+        {
+          question: normalizedQuestion,
+        };
       if (options.sessionId !== undefined) {
         body.sessionId = options.sessionId;
+      }
+      if (normalizedPreviousQuestion !== undefined) {
+        body.previousQuestion = normalizedPreviousQuestion;
       }
       const response = await this.#fetch(this.#askUrl, {
         method: "POST",

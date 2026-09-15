@@ -113,3 +113,20 @@ def test_missing_active_knowledge_returns_safe_service_error() -> None:
     assert response.status_code == 503
     assert response.json()["code"] == "KNOWLEDGE_UNAVAILABLE"
     assert "traceback" not in response.text.casefold()
+
+
+def test_follow_up_context_guides_retrieval_without_entering_telemetry() -> None:
+    container = build_local_container()
+    response = TestClient(create_app(container)).post(
+        "/v1/ask",
+        json={
+            "question": "Which project used Terraform?",
+            "previousQuestion": "Did Navneet use Terraform?",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["answerStatus"] in {"answered", "knowledge_gap"}
+    record = container.questions.records[0]
+    assert record.redacted_question == "Which project used Terraform?"
+    assert "Did Navneet use Terraform?" not in record.redacted_question

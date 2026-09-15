@@ -9,6 +9,7 @@ type WidgetPhase = "idle" | "submitting" | "answered" | "knowledge_gap" | "error
 const DEFAULT_ASSISTANT_NAME = "Portfolio assistant";
 const MINIMUM_QUESTION_LENGTH = 3;
 const MAXIMUM_QUESTION_LENGTH = 500;
+const MAXIMUM_VISIBLE_HISTORY_TURNS = 4;
 
 let instanceCount = 0;
 
@@ -173,6 +174,9 @@ const styles = `
     border-top: 1px solid var(--folio-aware-border);
     padding-top: 0.9rem;
   }
+  .history-turn { margin-top: 0; }
+  .result-question { margin: 0 0 0.5rem; color: var(--folio-aware-muted); font-size: 0.9rem; }
+
 
   .result[data-status="knowledge_gap"] {
     border: 1px solid var(--folio-aware-border);
@@ -210,8 +214,11 @@ export class FolioAwareElement extends HTMLElementBase {
   readonly #submit: HTMLButtonElement;
   readonly #status: HTMLParagraphElement;
   readonly #result: HTMLElement;
+  readonly #resultQuestion: HTMLParagraphElement;
   readonly #answer: HTMLParagraphElement;
   readonly #sourcesHeading: HTMLHeadingElement;
+  #currentQuestion: string | undefined;
+  #previousQuestion: string | undefined;
   readonly #sources: HTMLUListElement;
   #phase: WidgetPhase = "idle";
   #activeRequest: AbortController | undefined;
@@ -280,11 +287,17 @@ export class FolioAwareElement extends HTMLElementBase {
     this.#result = element("section", "result");
     this.#result.hidden = true;
     this.#result.setAttribute("aria-label", "Portfolio answer");
+    this.#resultQuestion = element("p", "result-question");
     this.#answer = element("p", "answer");
     this.#sourcesHeading = element("h3", "sources-heading");
     this.#sourcesHeading.textContent = "Sources";
     this.#sources = element("ul", "sources");
-    this.#result.append(this.#answer, this.#sourcesHeading, this.#sources);
+    this.#result.append(
+      this.#resultQuestion,
+      this.#answer,
+      this.#sourcesHeading,
+      this.#sources,
+    );
     body.append(this.#form, this.#status, this.#result);
     this.#panel.append(header, body);
 
@@ -391,8 +404,29 @@ export class FolioAwareElement extends HTMLElementBase {
     this.#question.focus();
   }
 
+  #archiveCurrentResult(): void {
+    if (this.#result.hidden || this.#currentQuestion === undefined) {
+      return;
+    }
+    const archived = this.#result.cloneNode(true) as HTMLElement;
+    archived.hidden = false;
+    archived.classList.add("history-turn");
+    archived.setAttribute("aria-label", "Earlier portfolio answer");
+    this.#result.before(archived);
+    const turns =
+      this.#result.parentElement?.querySelectorAll<HTMLElement>(".history-turn") ?? [];
+    for (const turn of Array.from(turns).slice(
+      0,
+      Math.max(0, turns.length - MAXIMUM_VISIBLE_HISTORY_TURNS),
+    )) {
+      turn.remove();
+    }
+  }
+
   #clearResult(): void {
     this.#result.hidden = true;
+    this.#currentQuestion = undefined;
+    this.#resultQuestion.textContent = "";
     this.#answer.textContent = "";
     this.#answer.classList.remove("error");
     this.#sources.replaceChildren();
@@ -418,8 +452,11 @@ export class FolioAwareElement extends HTMLElementBase {
     this.#sources.hidden = citations.length === 0;
   }
 
-  #renderResponse(response: AskResponse): void {
+  #renderResponse(question: string, response: AskResponse): void {
     this.#clearResult();
+    this.#currentQuestion = question;
+    this.#previousQuestion = Array.from(question).slice(0, 200).join("");
+    this.#resultQuestion.textContent = `You asked: ${question}`;
     this.#setPhase(response.answerStatus);
     this.#answer.textContent = response.answer;
     this.#renderCitations(response.citations);
@@ -430,8 +467,10 @@ export class FolioAwareElement extends HTMLElementBase {
         : "No verified answer was found.";
   }
 
-  #renderError(error: unknown): void {
+  #renderError(question: string, error: unknown): void {
     this.#clearResult();
+    this.#currentQuestion = question;
+    this.#resultQuestion.textContent = `You asked: ${question}`;
     this.#setPhase("error");
     let message = "I couldn't complete that question. Please try again.";
     if (error instanceof FolioAwareClientError) {
@@ -465,6 +504,7 @@ export class FolioAwareElement extends HTMLElementBase {
       return;
     }
 
+    this.#archiveCurrentResult();
     let client: FolioAwareClient;
     try {
       client = new FolioAwareClient({
@@ -472,11 +512,12 @@ export class FolioAwareElement extends HTMLElementBase {
       });
       this.#sessionId ??= createEphemeralSessionId();
     } catch (error) {
-      this.#renderError(error);
+      this.#renderError(question, error);
       return;
     }
 
     this.#clearResult();
+    this.#question.value = "";
     this.#setPhase("submitting");
     this.#setBusy(true);
     this.#status.textContent = "Looking for verified evidence…";
@@ -486,18 +527,21 @@ export class FolioAwareElement extends HTMLElementBase {
 
     try {
       const response = await client.ask(question, {
+        ...(this.#previousQuestion === undefined
+          ? {}
+          : { previousQuestion: this.#previousQuestion }),
         sessionId: this.#sessionId,
         signal: controller.signal,
       });
       if (requestSequence === this.#requestSequence) {
-        this.#renderResponse(response);
+        this.#renderResponse(question, response);
       }
     } catch (error) {
       if (
         requestSequence === this.#requestSequence &&
         !(error instanceof FolioAwareClientError && error.code === "aborted")
       ) {
-        this.#renderError(error);
+        this.#renderError(question, error);
       }
     } finally {
       if (requestSequence === this.#requestSequence) {

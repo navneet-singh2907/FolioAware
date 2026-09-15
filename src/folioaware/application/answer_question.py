@@ -23,6 +23,8 @@ from folioaware.security.telemetry import TelemetrySanitizer
 
 LOGGER = logging.getLogger(__name__)
 KNOWLEDGE_GAP_ANSWER = "I don't have verified information about that."
+_PREVIOUS_QUESTION_PREFIX = "Previous question: "
+_FOLLOW_UP_QUESTION_PREFIX = " Follow-up question: "
 
 
 class AnswerQuestion:
@@ -51,11 +53,20 @@ class AnswerQuestion:
         self._top_k = top_k
         self._retention_days = retention_days
 
-    def execute(self, *, question: str, session_id: str | None) -> AskResult:
+    def execute(
+        self,
+        *,
+        question: str,
+        previous_question: str | None = None,
+        session_id: str | None,
+    ) -> AskResult:
         normalized_question = " ".join(question.split())
+        contextual_question = self._contextual_question(
+            normalized_question, previous_question
+        )
         request_id = self._identifiers.new()
         version = self._knowledge.get_active_version()
-        query_embedding = self._embeddings.embed_query(normalized_question)
+        query_embedding = self._embeddings.embed_query(contextual_question)
         if (
             query_embedding.task_type is not EmbeddingTaskType.RETRIEVAL_QUERY
             or query_embedding.model != version.embedding_model
@@ -84,7 +95,7 @@ class AnswerQuestion:
         else:
             result = self._generate_answer(
                 request_id=request_id,
-                question=normalized_question,
+                question=contextual_question,
                 knowledge_version=version.index_version,
                 evidence=eligible,
             )
@@ -95,6 +106,24 @@ class AnswerQuestion:
             session_id=session_id,
         )
         return result
+
+    @staticmethod
+    def _contextual_question(question: str, previous_question: str | None) -> str:
+        if previous_question is None:
+            return question
+        normalized_previous = " ".join(previous_question.split())
+        maximum_previous_length = (
+            500
+            - len(question)
+            - len(_PREVIOUS_QUESTION_PREFIX)
+            - len(_FOLLOW_UP_QUESTION_PREFIX)
+        )
+        if maximum_previous_length < 3:
+            return question
+        return (
+            f"{_PREVIOUS_QUESTION_PREFIX}{normalized_previous[:maximum_previous_length]}"
+            f"{_FOLLOW_UP_QUESTION_PREFIX}{question}"
+        )
 
     def _generate_answer(
         self,

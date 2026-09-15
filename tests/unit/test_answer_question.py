@@ -139,3 +139,19 @@ def test_telemetry_failure_does_not_break_a_verified_answer() -> None:
     result = service.execute(question="Did they use FastAPI?", session_id=None)
 
     assert result.answer_status == "answered"
+
+
+def test_follow_up_query_includes_one_prior_question_without_exceeding_limit() -> None:
+    contextual_question = AnswerQuestion._contextual_question(
+        "Which project used it?",
+        "Did Navneet use Terraform?",
+    )
+
+    assert contextual_question == (
+        "Previous question: Did Navneet use Terraform? "
+        "Follow-up question: Which project used it?"
+    )
+    assert (
+        AnswerQuestion._contextual_question("x" * 500, "Did Navneet use Terraform?")
+        == "x" * 500
+    )

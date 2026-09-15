@@ -44,11 +44,21 @@ class BlockingAnswerQuestion:
         self.started = Event()
         self.release_request = Event()
 
-    def execute(self, *, question: str, session_id: str | None) -> AskResult:
+    def execute(
+        self,
+        *,
+        question: str,
+        previous_question: str | None = None,
+        session_id: str | None,
+    ) -> AskResult:
         self.started.set()
         if not self.release_request.wait(timeout=5):
             raise TimeoutError("test did not release blocked answer request")
-        return self._delegate.execute(question=question, session_id=session_id)
+        return self._delegate.execute(
+            question=question,
+            previous_question=previous_question,
+            session_id=session_id,
+        )
 
 
 def test_public_answer_limit_returns_stable_problem_and_retry_after() -> None:

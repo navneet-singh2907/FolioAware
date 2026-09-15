@@ -22,11 +22,14 @@ class PublicModel(BaseModel):
 
 class AskRequest(PublicModel):
     question: str = Field(min_length=3, max_length=500)
+    previous_question: str | None = Field(default=None, min_length=3, max_length=200)
     session_id: str | None = Field(default=None, min_length=1, max_length=128)
 
-    @field_validator("question")
+    @field_validator("question", "previous_question")
     @classmethod
-    def normalize_question(cls, value: str) -> str:
+    def normalize_question(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
         normalized = " ".join(value.split())
         if len(normalized) < 3:
             raise ValueError("question must contain at least 3 characters")

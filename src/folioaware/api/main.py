@@ -215,6 +215,7 @@ def create_app(
     def ask(payload: AskRequest) -> AskResponse:
         result = dependencies.answer_question.execute(
             question=payload.question,
+            previous_question=payload.previous_question,
             session_id=payload.session_id,
         )
         return AskResponse.from_result(result)

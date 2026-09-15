@@ -62,6 +62,7 @@ Request:
 ```json
 {
   "question": "How was Project Atlas deployed?",
+  "previousQuestion": "Did they use Terraform?",
   "sessionId": "optional-browser-generated-id"
 }
 ```
@@ -71,6 +72,7 @@ Validation:
 | Field | Rule |
 | --- | --- |
 | `question` | Required string; trim surrounding whitespace; 3–500 Unicode characters after trimming |
+| `previousQuestion` | Optional immediately prior question; trim surrounding whitespace; 3–200 Unicode characters; used only in memory for the current answer and never persisted as telemetry |
 | `sessionId` | Optional opaque string; 1–128 characters; never persisted directly |
 
 An answered response: `200 OK`
@@ -200,6 +202,7 @@ public answer quota.
 | Field | Type | Required | Notes |
 | --- | --- | --- | --- |
 | `question` | string | yes | Original question is processed in memory; the persisted copy is redacted |
+| `previousQuestion` | string or null | no | One browser-session follow-up context item; processed in memory and never persisted |
 | `sessionId` | string or null | no | Hashed with a rotating server secret before persistence |
 
 ### `AskResponse`

@@ -90,9 +90,10 @@ content only and creates no cloud resource.
 ## Security and privacy boundary
 
 - The bundle contains no Google SDK, API key, owner token, or browser secret.
-- It sends only the normalized question and an ephemeral in-memory session ID.
+- It sends the normalized question, at most one prior question for an in-memory follow-up, and an ephemeral in-memory session ID.
 - It uses no cookies, analytics, browser cache, IndexedDB, or persistent web
   storage.
+- It keeps at most four visible answer cards only in the live widget instance; no browser storage persists them.
 - API data is runtime-validated and bounded before rendering.
 - Answers and labels are written as text, never interpreted as HTML or
   Markdown.
