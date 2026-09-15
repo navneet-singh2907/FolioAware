@@ -51,4 +51,6 @@ node_modules/
 coverage/
 playwright-report/
 test-results/
+# Locally generated marketing and review artifacts are not source releases.
+/output/
 /tmp/
